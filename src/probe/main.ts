@@ -22,8 +22,9 @@ const USAGE = `probe: the only way to send prompts to the target model (Claude O
       Registers a new experiment.
 
   probe attempt --experiment <id> --strategy <text> --wrong-assumption <text> --truth <text>
-                [--prompt <text> | --prompt-file <path>] [--system-prompt-file <path>] [--repeat-of <n>]
+                [--prompt <text> | --prompt-file <path>] [--system-prompt-file <path>] [--repeat-of <n>] [--web-search]
       Sends the prompt to ${SAMPLES_PER_ATTEMPT} separate target sessions at once and has a judge grade each reply.
+      With --web-search the target can search the web and fetch pages. Without it the target has no tools.
       Without --prompt or --prompt-file, the prompt is read from stdin.
 
   probe note --experiment <id> --attempt <n> --text <text>
@@ -75,11 +76,11 @@ function createExperiment(values: Record<string, unknown>) {
 
 /** Runs one sample from target call to verdict, reporting every state change so the page can show progress. */
 async function runSample(attempt: Attempt, onUpdate: (sample: Sample) => void) {
-  const target = await askTarget(attempt.prompt, attempt.systemPrompt);
+  const target = await askTarget(attempt.prompt, attempt.systemPrompt, attempt.webSearch === true);
   if (!target.ok) return onUpdate({ status: "error", stage: "target", error: target.error, reply: null });
   onUpdate({ status: "judging", reply: target.value, targetMs: target.durationMs });
 
-  const judgement = await judgeReply({ ...attempt, reply: target.value });
+  const judgement = await judgeReply({ ...attempt, webSearch: attempt.webSearch === true, reply: target.value });
   if (!judgement.ok) return onUpdate({ status: "error", stage: "judge", error: judgement.error, reply: target.value });
   onUpdate({ status: "judged", reply: target.value, targetMs: target.durationMs, ...judgement.value });
 }
@@ -114,6 +115,7 @@ async function runAttempt(values: Record<string, unknown>) {
     strategy: requireOption(values, "strategy"),
     prompt: prompt.trim(),
     systemPrompt: typeof systemPromptFile === "string" ? readFileSync(systemPromptFile, "utf8").trim() : null,
+    webSearch: values["web-search"] === true,
     wrongAssumption: requireOption(values, "wrong-assumption"),
     truth: requireOption(values, "truth"),
     repeatOf: values["repeat-of"] === undefined ? null : Number(values["repeat-of"]),
@@ -171,6 +173,7 @@ const { positionals, values } = parseArgs({
     "prompt-file": { type: "string" },
     "system-prompt-file": { type: "string" },
     "repeat-of": { type: "string" },
+    "web-search": { type: "boolean" },
     attempt: { type: "string" },
     text: { type: "string" },
     summary: { type: "string" },

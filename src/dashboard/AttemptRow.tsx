@@ -23,6 +23,7 @@ function RowTags({ attempt, state }: { attempt: Attempt; state: AttemptState }) 
   const tags = [
     state !== "finished" && <span key="state" className={`tag tag--${state}`}>{STATE_LABELS[state]}</span>,
     attempt.systemPrompt !== null && <span key="system" className="tag tag--system">System prompt</span>,
+    attempt.webSearch === true && <span key="search" className="tag tag--system">Web search</span>,
     attempt.repeatOf !== null && <span key="repeat" className="tag">Repeat of #{attempt.repeatOf}</span>,
     attempt.note !== null && <span key="note" className="tag">Worker note</span>,
   ].filter(Boolean);

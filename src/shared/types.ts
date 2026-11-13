@@ -15,6 +15,8 @@ export type Attempt = {
   strategy: string;
   prompt: string;
   systemPrompt: string | null;
+  /** Whether the target could search the web. Attempts saved before this option existed have no value here, which means no. */
+  webSearch?: boolean;
   wrongAssumption: string;
   truth: string;
   repeatOf: number | null;
