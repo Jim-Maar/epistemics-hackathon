@@ -1,18 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Attempt, ExperimentWithAttempts } from "../shared/types.ts";
+import type { Attempt, ExperimentKind, ExperimentWithAttempts } from "../shared/types.ts";
 import { AttemptRow } from "./AttemptRow.tsx";
 import { AllExperimentsHeader, ExperimentHeader } from "./ExperimentHeader.tsx";
 import { SearchIcon } from "./icons.tsx";
-import { attemptKey, hasAnyNo, hasMajorityNo } from "./outcome.ts";
-import { Sidebar } from "./Sidebar.tsx";
+import { attemptKey, hasAnyFinding, hasMajorityFindings } from "./outcome.ts";
+import { attemptsWithKind, Sidebar } from "./Sidebar.tsx";
 import { useExperiments } from "./useExperiments.ts";
 
-type Filter = "all" | "any_no" | "majority_no";
+type Filter = "all" | "any_finding" | "majority_findings";
 
-const FILTERS: { id: Filter; label: string; matches: (attempt: Attempt) => boolean }[] = [
+type KindedAttempt = { attempt: Attempt; kind: ExperimentKind };
+
+const FILTERS: { id: Filter; label: string; matches: (item: KindedAttempt) => boolean }[] = [
   { id: "all", label: "All", matches: () => true },
-  { id: "any_no", label: "At least one No", matches: hasAnyNo },
-  { id: "majority_no", label: "Mostly No", matches: hasMajorityNo },
+  { id: "any_finding", label: "At least one finding", matches: ({ attempt, kind }) => hasAnyFinding(attempt, kind) },
+  { id: "majority_findings", label: "Mostly findings", matches: ({ attempt, kind }) => hasMajorityFindings(attempt, kind) },
 ];
 
 const EXPERIMENT_HASH_PREFIX = "#/";
@@ -35,8 +37,10 @@ function useSelectedExperimentId(): [string | null, (id: string | null) => void]
   return [selectedId, select];
 }
 
+const followUpMessages = (attempt: Attempt) => attempt.samples.flatMap((sample) => (sample.status === "replied" ? sample.followUps.map((followUp) => followUp.message) : []));
+
 const matchesSearch = (attempt: Attempt, query: string) =>
-  [attempt.prompt, attempt.strategy, attempt.wrongAssumption, attempt.truth, attempt.note ?? ""].some((text) => text.toLowerCase().includes(query));
+  [attempt.prompt, attempt.strategy, attempt.wrongAssumption, attempt.truth, attempt.note, ...followUpMessages(attempt)].some((text) => text?.toLowerCase().includes(query));
 
 const isTyping = (target: EventTarget | null) => target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement;
 
@@ -86,14 +90,14 @@ function Dashboard({ experiments, now }: { experiments: ExperimentWithAttempts[]
   const selected = experiments.find((experiment) => experiment.id === selectedId) ?? null;
   const titlesById = new Map(experiments.map((experiment) => [experiment.id, experiment.title]));
   const scopeAttempts = useMemo(
-    () => (selected === null ? experiments.flatMap((experiment) => experiment.attempts) : selected.attempts).toSorted((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    () => attemptsWithKind(selected === null ? experiments : [selected]).toSorted((a, b) => b.attempt.createdAt.localeCompare(a.attempt.createdAt)),
     [experiments, selected],
   );
   const normalizedQuery = query.trim().toLowerCase();
-  const visibleAttempts = scopeAttempts.filter((attempt) => FILTERS.find((f) => f.id === filter)!.matches(attempt) && matchesSearch(attempt, normalizedQuery));
-  const allVisibleExpanded = visibleAttempts.length > 0 && visibleAttempts.every((attempt) => expandedKeys.has(attemptKey(attempt)));
+  const visibleAttempts = scopeAttempts.filter((item) => FILTERS.find((f) => f.id === filter)!.matches(item) && matchesSearch(item.attempt, normalizedQuery));
+  const allVisibleExpanded = visibleAttempts.length > 0 && visibleAttempts.every(({ attempt }) => expandedKeys.has(attemptKey(attempt)));
 
-  const toggleAll = () => setExpandedKeys(allVisibleExpanded ? new Set() : new Set(visibleAttempts.map(attemptKey)));
+  const toggleAll = () => setExpandedKeys(allVisibleExpanded ? new Set() : new Set(visibleAttempts.map(({ attempt }) => attemptKey(attempt))));
   const toggleOne = (key: string) =>
     setExpandedKeys((current) => {
       const next = new Set(current);
@@ -137,10 +141,11 @@ function Dashboard({ experiments, now }: { experiments: ExperimentWithAttempts[]
           <EmptyState title="Nothing matches">Try another filter or clear the search.</EmptyState>
         ) : (
           <ul className="rows">
-            {visibleAttempts.map((attempt) => (
+            {visibleAttempts.map(({ attempt, kind }) => (
               <AttemptRow
                 key={attemptKey(attempt)}
                 attempt={attempt}
+                kind={kind}
                 experimentTitle={selected === null ? (titlesById.get(attempt.experimentId) ?? attempt.experimentId) : null}
                 now={now}
                 expanded={expandedKeys.has(attemptKey(attempt))}
