@@ -1,0 +1,131 @@
+import { useState } from "react";
+import type { Attempt } from "../shared/types.ts";
+import { formatTimestamp } from "./format.ts";
+import { ChevronIcon, CopyIcon } from "./icons.tsx";
+import { attemptState, hasAnyNo, hasMajorityNo, sampleMark, type AttemptState } from "./outcome.ts";
+import { SampleCard } from "./SampleCard.tsx";
+import { VerdictMark } from "./VerdictMark.tsx";
+
+type AttemptRowProps = {
+  attempt: Attempt;
+  experimentTitle: string | null;
+  now: number;
+  expanded: boolean;
+  onToggle: () => void;
+};
+
+const STATE_LABELS: Record<Exclude<AttemptState, "finished">, string> = {
+  running: "Running",
+  interrupted: "Interrupted",
+};
+
+function RowTags({ attempt, state }: { attempt: Attempt; state: AttemptState }) {
+  const tags = [
+    state !== "finished" && <span key="state" className={`tag tag--${state}`}>{STATE_LABELS[state]}</span>,
+    attempt.systemPrompt !== null && <span key="system" className="tag tag--system">System prompt</span>,
+    attempt.repeatOf !== null && <span key="repeat" className="tag">Repeat of #{attempt.repeatOf}</span>,
+    attempt.note !== null && <span key="note" className="tag">Worker note</span>,
+  ].filter(Boolean);
+  return tags.length > 0 ? <span className="row__tags">{tags}</span> : null;
+}
+
+function DetailField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="field">
+      <dt className="field__label">{label}</dt>
+      <dd className="field__value">{children}</dd>
+    </div>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const COPIED_FEEDBACK_MS = 1500;
+  async function copy() {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
+  }
+  return (
+    <button type="button" className="text-button text-button--icon" onClick={copy}>
+      <CopyIcon size={13} />
+      {copied ? "Copied" : "Copy prompt"}
+    </button>
+  );
+}
+
+function AttemptDetail({ attempt }: { attempt: Attempt }) {
+  const [expandedReplies, setExpandedReplies] = useState<boolean[]>(attempt.samples.map(() => false));
+  const allRepliesExpanded = expandedReplies.every(Boolean);
+  const toggleReply = (index: number) => setExpandedReplies((current) => current.map((value, i) => (i === index ? !value : value)));
+
+  return (
+    <div className="detail">
+      <div className="detail__top">
+        <section className="detail__prompt">
+          <div className="section-heading">
+            <h3>Prompt</h3>
+            <CopyButton text={attempt.prompt} />
+          </div>
+          <p className="prompt-text">{attempt.prompt}</p>
+        </section>
+        <dl className="detail__facts">
+          <DetailField label="Wrong assumption">{attempt.wrongAssumption}</DetailField>
+          <DetailField label="What is true">{attempt.truth}</DetailField>
+          {attempt.note !== null && <DetailField label="Worker note">{attempt.note}</DetailField>}
+          {attempt.systemPrompt !== null && (
+            <DetailField label="System prompt">
+              <span className="system-prompt">{attempt.systemPrompt}</span>
+            </DetailField>
+          )}
+        </dl>
+      </div>
+
+      <div className="section-heading">
+        <h3>Samples</h3>
+        <button type="button" className="text-button" onClick={() => setExpandedReplies(attempt.samples.map(() => !allRepliesExpanded))}>
+          {allRepliesExpanded ? "Shorten all replies" : "Show all replies in full"}
+        </button>
+      </div>
+      <div className="samples">
+        {attempt.samples.map((sample, index) => (
+          <SampleCard key={index} sample={sample} number={index + 1} replyExpanded={expandedReplies[index] ?? false} onToggleReply={() => toggleReply(index)} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function AttemptRow({ attempt, experimentTitle, now, expanded, onToggle }: AttemptRowProps) {
+  const state = attemptState(attempt, now);
+  const failureClass = hasMajorityNo(attempt) ? "row--majority-no" : hasAnyNo(attempt) ? "row--any-no" : "";
+  const detailId = `detail-${attempt.experimentId}-${attempt.number}`;
+
+  return (
+    <li className={`row ${failureClass} ${expanded ? "row--expanded" : ""}`}>
+      <button type="button" className="row__summary" data-attempt-row aria-expanded={expanded} aria-controls={detailId} onClick={onToggle}>
+        <span className="row__number">#{attempt.number}</span>
+        <span className="row__marks">
+          {attempt.samples.map((sample, index) => (
+            <VerdictMark key={index} mark={sampleMark(sample)} sampleNumber={index + 1} />
+          ))}
+        </span>
+        <span className="row__text">
+          <span className="row__headline">
+            {experimentTitle !== null && <span className="row__experiment">{experimentTitle}</span>}
+            <span className="row__strategy">{attempt.strategy}</span>
+            <RowTags attempt={attempt} state={state} />
+          </span>
+          <span className="row__prompt">{attempt.prompt}</span>
+        </span>
+        <span className="row__time">{formatTimestamp(attempt.createdAt)}</span>
+        <span className="row__chevron"><ChevronIcon /></span>
+      </button>
+      {expanded && (
+        <div id={detailId}>
+          <AttemptDetail attempt={attempt} />
+        </div>
+      )}
+    </li>
+  );
+}

@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Runs the probe command from any folder. See src/probe/main.ts.
+exec bun run "$(dirname "$(readlink -f "$0")")/../src/probe/main.ts" "$@"
