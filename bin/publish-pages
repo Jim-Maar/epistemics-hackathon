@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Publishes the results page with a snapshot of all current data to GitHub Pages.
+#   publish-pages
+# It builds the page into a temporary folder, force-pushes that folder as the
+# gh-pages branch of the origin repository, and turns on GitHub Pages for that
+# branch the first time. Run it again whenever you want to share newer results.
+# The published site is public, even when the repository is private.
+set -euo pipefail
+
+project_dir="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
+site_dir="$(mktemp -d)"
+trap 'rm -rf "$site_dir"' EXIT
+remote_url="$(git -C "$project_dir" remote get-url origin)"
+repository="$(cd "$project_dir" && gh repo view --json nameWithOwner --jq .nameWithOwner)"
+
+(cd "$project_dir" && bun run src/dashboard/export.ts "$site_dir")
+# Without this file GitHub Pages runs Jekyll, which hides files whose names start with an underscore.
+touch "$site_dir/.nojekyll"
+
+git -C "$site_dir" init -q -b gh-pages
+git -C "$site_dir" add -A
+git -C "$site_dir" -c user.name="publish-pages" -c user.email="publish-pages@localhost" commit -q -m "Publish results snapshot"
+git -C "$site_dir" push -q --force "$remote_url" gh-pages
+
+if ! gh api "repos/$repository/pages" >/dev/null 2>&1; then
+  gh api -X POST "repos/$repository/pages" -f "source[branch]=gh-pages" -f "source[path]=/" >/dev/null
+fi
+echo "Published. The site is at $(gh api "repos/$repository/pages" --jq .html_url) (the first build takes a minute or two)"
