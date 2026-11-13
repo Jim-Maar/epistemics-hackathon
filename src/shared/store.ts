@@ -1,4 +1,4 @@
-import { mkdirSync, openSync, closeSync, readdirSync, readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
+import { mkdirSync, openSync, closeSync, readdirSync, readFileSync, renameSync, rmdirSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
 import type { Attempt, Experiment, ExperimentWithAttempts } from "./types.ts";
 
@@ -74,6 +74,42 @@ export function readAttempt(experimentId: string, number: number): Attempt {
 
 export function writeAttempt(attempt: Attempt) {
   writeJsonAtomically(attemptPath(attempt.experimentId, attempt.number), attempt);
+}
+
+const LOCK_RETRY_MS = 20;
+const LOCK_TIMEOUT_MS = 10_000;
+
+/** Holds a lock directory for the attempt while it runs, because creating a directory either succeeds or fails as one step. */
+function withAttemptLock<T>(experimentId: string, number: number, action: () => T): T {
+  const lockPath = `${attemptPath(experimentId, number)}.lock`;
+  const deadline = Date.now() + LOCK_TIMEOUT_MS;
+  for (;;) {
+    try {
+      mkdirSync(lockPath);
+      break;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+      if (Date.now() > deadline) throw new Error(`Timed out waiting for the lock ${lockPath}. Delete it if no probe is running.`);
+      Bun.sleepSync(LOCK_RETRY_MS);
+    }
+  }
+  try {
+    return action();
+  } finally {
+    rmdirSync(lockPath);
+  }
+}
+
+/**
+ * Reads the attempt fresh from disk, applies the change and writes it back, all under a lock.
+ * Several probe runs can then change different samples of one attempt at the same time without losing each other's work.
+ */
+export function updateAttempt(experimentId: string, number: number, change: (attempt: Attempt) => void) {
+  withAttemptLock(experimentId, number, () => {
+    const attempt = readAttempt(experimentId, number);
+    change(attempt);
+    writeAttempt(attempt);
+  });
 }
 
 export function readAllExperiments(): ExperimentWithAttempts[] {

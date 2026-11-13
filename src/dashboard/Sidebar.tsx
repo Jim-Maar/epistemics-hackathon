@@ -1,32 +1,38 @@
-import type { Attempt, ExperimentWithAttempts } from "../shared/types.ts";
-import { hasAnyNo, tallyMarks, type SampleMark } from "./outcome.ts";
-import { MARK_LABELS } from "./VerdictMark.tsx";
+import { experimentKind, type ExperimentWithAttempts } from "../shared/types.ts";
+import { tallyRoles, type MarkRole } from "./outcome.ts";
+import { ROLE_LABELS } from "./VerdictMark.tsx";
 
-const TALLY_ORDER: SampleMark[] = ["no", "somewhat", "yes", "error"];
+const TALLY_ORDER: MarkRole[] = ["finding", "partial", "clean", "error"];
+
+/** Pairs every attempt with its experiment's kind, because the kind decides which verdict is a finding. */
+export const attemptsWithKind = (experiments: ExperimentWithAttempts[]) =>
+  experiments.flatMap((experiment) => experiment.attempts.map((attempt) => ({ attempt, kind: experimentKind(experiment) })));
+
+type KindedAttempts = ReturnType<typeof attemptsWithKind>;
 
 /** One thin bar split by verdict, so experiments can be compared at a glance. */
-function TallyBar({ attempts }: { attempts: Attempt[] }) {
-  const tally = tallyMarks(attempts);
-  const total = TALLY_ORDER.reduce((sum, mark) => sum + tally[mark], 0);
+function TallyBar({ attempts }: { attempts: KindedAttempts }) {
+  const tally = tallyRoles(attempts);
+  const total = TALLY_ORDER.reduce((sum, role) => sum + tally[role], 0);
   if (total === 0) return <div className="tally tally--empty" />;
-  const description = TALLY_ORDER.filter((mark) => tally[mark] > 0).map((mark) => `${tally[mark]} ${MARK_LABELS[mark]}`).join(", ");
+  const description = TALLY_ORDER.filter((role) => tally[role] > 0).map((role) => `${tally[role]} ${ROLE_LABELS[role]}`).join(", ");
   return (
     <div className="tally" role="img" aria-label={`Samples: ${description}`} title={`Samples: ${description}`}>
-      {TALLY_ORDER.map((mark) => tally[mark] > 0 && <span key={mark} className={`tally__part tally__part--${mark}`} style={{ flexGrow: tally[mark] }} />)}
+      {TALLY_ORDER.map((role) => tally[role] > 0 && <span key={role} className={`tally__part tally__part--${role}`} style={{ flexGrow: tally[role] }} />)}
     </div>
   );
 }
 
-function FailureCount({ attempts }: { attempts: Attempt[] }) {
-  const failed = attempts.filter(hasAnyNo).length;
-  if (failed === 0) return <span className="nav-item__quiet">No failures</span>;
-  return <span className="nav-item__failures">{failed} with a No</span>;
+function FindingCount({ attempts }: { attempts: KindedAttempts }) {
+  const findings = tallyRoles(attempts).finding;
+  if (findings === 0) return <span className="nav-item__quiet">No findings</span>;
+  return <span className="nav-item__findings">{findings} {findings === 1 ? "finding" : "findings"}</span>;
 }
 
 type SidebarProps = { experiments: ExperimentWithAttempts[]; selectedId: string | null; onSelect: (id: string | null) => void };
 
 export function Sidebar({ experiments, selectedId, onSelect }: SidebarProps) {
-  const allAttempts = experiments.flatMap((experiment) => experiment.attempts);
+  const allAttempts = attemptsWithKind(experiments);
   return (
     <nav className="sidebar" aria-label="Experiments">
       <div className="sidebar__brand">
@@ -38,7 +44,7 @@ export function Sidebar({ experiments, selectedId, onSelect }: SidebarProps) {
         <span className="nav-item__title">All experiments</span>
         <span className="nav-item__meta">
           <span>{allAttempts.length} attempts</span>
-          <FailureCount attempts={allAttempts} />
+          <FindingCount attempts={allAttempts} />
         </span>
         <TallyBar attempts={allAttempts} />
       </button>
@@ -48,6 +54,7 @@ export function Sidebar({ experiments, selectedId, onSelect }: SidebarProps) {
         {experiments.map((experiment) => {
           const isSelected = experiment.id === selectedId;
           const isRunning = experiment.finishedAt === null;
+          const attempts = attemptsWithKind([experiment]);
           return (
             <li key={experiment.id}>
               <button type="button" className={`nav-item ${isSelected ? "nav-item--selected" : ""}`} aria-current={isSelected ? "page" : undefined} onClick={() => onSelect(experiment.id)}>
@@ -58,9 +65,9 @@ export function Sidebar({ experiments, selectedId, onSelect }: SidebarProps) {
                     {isRunning ? "Running" : "Finished"}
                   </span>
                   <span>{experiment.attempts.length} of {experiment.maxAttempts}</span>
-                  <FailureCount attempts={experiment.attempts} />
+                  <FindingCount attempts={attempts} />
                 </span>
-                <TallyBar attempts={experiment.attempts} />
+                <TallyBar attempts={attempts} />
               </button>
             </li>
           );
