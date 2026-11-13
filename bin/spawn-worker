@@ -1,20 +1,25 @@
 #!/usr/bin/env bash
 # Starts a worker Claude for one experiment in its own tmux session and hands it its brief.
 #   spawn-worker <experiment-id> <brief-file>
-# The session is named epistemics--<experiment-id>, so it shows in the Alt-s picker.
-# It starts as a plain shell with Claude typed into it, so leaving Claude drops
-# back to the shell and `claude --continue` resumes the conversation.
+# The worker receives the brief followed by briefs/tooling.md, which explains the
+# probe command. The session is named epistemics--<experiment-id>. It starts as a
+# plain shell with Claude typed into it, so leaving Claude drops back to the shell
+# and `claude --continue` resumes the conversation.
 set -euo pipefail
 
 experiment_id="${1:?usage: spawn-worker <experiment-id> <brief-file>}"
 brief="${2:?usage: spawn-worker <experiment-id> <brief-file>}"
 project_dir="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"
 session="epistemics--$experiment_id"
-worker_command="claude --model fable --effort high"
+target="=$session:"
+worker_command="${WORKER_COMMAND:-claude --model fable --effort high}"
 # The prompt takes up to two minutes to appear on a cold start.
 prompt_wait_tries=60
 prompt_wait_seconds=2
+# Claude needs a moment to take in a paste before Enter submits it.
+paste_settle_seconds=2
 
+[[ "$experiment_id" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo "spawn-worker: the experiment id must be lowercase words joined by dashes" >&2; exit 1; }
 [[ -f "$brief" ]] || { echo "spawn-worker: no brief at $brief" >&2; exit 1; }
 if tmux has-session -t "=$session" 2>/dev/null; then
   echo "spawn-worker: tmux session $session already exists" >&2
@@ -23,11 +28,30 @@ fi
 
 mkdir -p "$project_dir/notes/$experiment_id"
 tmux new-session -d -s "$session" -c "$project_dir"
-tmux send-keys -t "=$session:" "$worker_command" Enter
+tmux send-keys -t "$target" "$worker_command" Enter
 
+prompt_ready=false
 for _ in $(seq 1 "$prompt_wait_tries"); do
-  tmux capture-pane -p -t "=$session:" | grep -q "auto mode\|for shortcuts" && break
+  pane="$(tmux capture-pane -p -t "$target")"
+  if grep -q "trust this folder" <<<"$pane"; then
+    # The cursor starts on "No, exit", so we move down to "Yes, I trust this folder" first.
+    tmux send-keys -t "$target" Down
+    tmux send-keys -t "$target" Enter
+  elif grep -q "auto mode\|for shortcuts" <<<"$pane"; then
+    prompt_ready=true
+    break
+  fi
   sleep "$prompt_wait_seconds"
 done
-claude-paste "$session" < "$brief"
+if [[ "$prompt_ready" != true ]]; then
+  echo "spawn-worker: Claude's prompt did not appear in tmux session $session. Look at it with: tmux attach -t $session" >&2
+  exit 1
+fi
+
+buffer="spawn-worker-$$"
+{ cat "$brief"; echo; sed "s/{{EXPERIMENT_ID}}/$experiment_id/g" "$project_dir/briefs/tooling.md"; } | tmux load-buffer -b "$buffer" -
+# -p wraps the text in bracketed-paste markers, so Claude takes it as one message. -d deletes the buffer afterwards.
+tmux paste-buffer -p -d -b "$buffer" -t "$target"
+sleep "$paste_settle_seconds"
+tmux send-keys -t "$target" Enter
 echo "Started worker in tmux session $session"

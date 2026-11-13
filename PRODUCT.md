@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-React, chosen by Jim. Delegated beyond that: Vite, TypeScript and plain CSS, served by a small Bun server that also answers the data request. Vite and TypeScript match Jim's other dashboards.
+React, chosen by Jim. Delegated beyond that: TypeScript and plain CSS, bundled and served by a small Bun server that also answers the data request. Bun's own bundler replaces Vite, so the project needs one tool less.
 
 ## Users
 
