@@ -28,6 +28,14 @@ bun run dashboard
 
 Then open `http://localhost:8000/`. Set `PORT` to use another port. The page shows a failure, an attempt where at least one reply got "No", in red at the top of its row. Keys: `j` and `k` move between attempts, `Enter` opens one, `e` opens all, `/` searches.
 
+## Share the results
+
+```sh
+bin/publish-pages
+```
+
+This builds the page with a snapshot of all current data and publishes it to GitHub Pages, at https://jim-maar.github.io/epistemics-hackathon/ for this repository. The published page does not update by itself. Run the command again to share newer results.
+
 ## Start a worker for an experiment
 
 1. Write a brief: a markdown file with your request to the worker, in your own words. `briefs/emotional-messages.md` is the brief of the first experiment.
