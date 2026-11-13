@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Starts a worker Claude for one experiment in its own tmux session and hands it its brief.
 #   spawn-worker <experiment-id> <brief-file>
-# The worker receives the brief followed by briefs/tooling.md, which explains the
-# probe command. The session is named epistemics--<experiment-id>. It starts as a
+# The worker receives the brief, then briefs/rules.md with the rules every
+# experiment follows, then briefs/tooling.md, which explains the probe command. The session is named epistemics--<experiment-id>. It starts as a
 # plain shell with Claude typed into it, so leaving Claude drops back to the shell
 # and `claude --continue` resumes the conversation.
 set -euo pipefail
@@ -49,7 +49,7 @@ if [[ "$prompt_ready" != true ]]; then
 fi
 
 buffer="spawn-worker-$$"
-{ cat "$brief"; echo; sed "s/{{EXPERIMENT_ID}}/$experiment_id/g" "$project_dir/briefs/tooling.md"; } | tmux load-buffer -b "$buffer" -
+{ cat "$brief"; echo; cat "$project_dir/briefs/rules.md"; echo; sed"s/{{EXPERIMENT_ID}}/$experiment_id/g" "$project_dir/briefs/tooling.md"; } | tmux load-buffer -b "$buffer" -
 # -p wraps the text in bracketed-paste markers, so Claude takes it as one message. -d deletes the buffer afterwards.
 tmux paste-buffer -p -d -b "$buffer" -t "$target"
 sleep "$paste_settle_seconds"

@@ -37,7 +37,7 @@ Then open `http://localhost:8000/`. Set `PORT` to use another port. The page sho
    bin/spawn-worker <experiment-id> briefs/<your-brief>.md
    ```
 
-   The experiment id is lowercase words joined by dashes, such as `emotional-messages`. The script opens a tmux session named `epistemics--<experiment-id>`, starts Claude in it, and pastes your brief followed by `briefs/tooling.md`, which explains `probe` to the worker. Watch it with `tmux attach -t epistemics--<experiment-id>`.
+   The experiment id is lowercase words joined by dashes, such as `emotional-messages`. The script opens a tmux session named `epistemics--<experiment-id>`, starts Claude in it, and pastes your brief, then `briefs/rules.md` with the rules every experiment follows, then `briefs/tooling.md`, which explains `probe` to the worker. Watch it with `tmux attach -t epistemics--<experiment-id>`.
 
 The worker runs on Claude Fable 5.2 at effort high by default. Set `WORKER_COMMAND` to change that, for example `WORKER_COMMAND="claude --model opus --effort high" bin/spawn-worker ...`.
 
@@ -90,5 +90,5 @@ One attempt makes 6 model calls: 3 to Opus at effort high and 3 to the judge. 30
 | `src/probe/` | The `probe` command and the stripped Claude calls |
 | `src/shared/` | Data types and reading and writing the `data` folder |
 | `src/dashboard/` | The results page: a React app and a small Bun server |
-| `briefs/` | Worker briefs and the tooling section every worker gets |
+| `briefs/` | Worker briefs, plus the rules and the tooling section every worker gets |
 | `bin/` | The `probe` and `spawn-worker` commands |
