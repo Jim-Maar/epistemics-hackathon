@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Attempt, ExperimentKind, ExperimentWithAttempts } from "../shared/types.ts";
 import { AttemptRow } from "./AttemptRow.tsx";
 import { AllExperimentsHeader, ExperimentHeader } from "./ExperimentHeader.tsx";
+import { formatTimestamp } from "./format.ts";
 import { SearchIcon } from "./icons.tsx";
 import { attemptKey, hasAnyFinding, hasMajorityFindings } from "./outcome.ts";
 import { attemptsWithKind, Sidebar } from "./Sidebar.tsx";
@@ -80,7 +81,7 @@ function EmptyState({ title, children }: { title: string; children: React.ReactN
   );
 }
 
-function Dashboard({ experiments, now }: { experiments: ExperimentWithAttempts[]; now: number }) {
+function Dashboard({ experiments, now, snapshotAt }: { experiments: ExperimentWithAttempts[]; now: number; snapshotAt: string | null }) {
   const [selectedId, select] = useSelectedExperimentId();
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
@@ -156,7 +157,8 @@ function Dashboard({ experiments, now }: { experiments: ExperimentWithAttempts[]
         )}
 
         <p className="shortcuts">
-          <kbd>j</kbd> <kbd>k</kbd> move between attempts, <kbd>Enter</kbd> opens one, <kbd>e</kbd> opens all, <kbd>/</kbd> searches. The page updates every two seconds.
+          <kbd>j</kbd> <kbd>k</kbd> move between attempts, <kbd>Enter</kbd> opens one, <kbd>e</kbd> opens all, <kbd>/</kbd> searches.{" "}
+          {snapshotAt === null ? "The page updates every two seconds." : `This is a snapshot taken on ${formatTimestamp(snapshotAt)}.`}
         </p>
       </main>
     </div>
@@ -169,9 +171,9 @@ export function App() {
   if (state.status === "error") {
     return (
       <EmptyState title="Can't reach the dashboard server">
-        {state.message}. The page tries again every two seconds.
+        {state.message}.
       </EmptyState>
     );
   }
-  return <Dashboard experiments={state.experiments} now={state.now} />;
+  return <Dashboard experiments={state.experiments} now={state.now} snapshotAt={state.snapshotAt} />;
 }
