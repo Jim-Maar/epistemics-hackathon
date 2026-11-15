@@ -80,18 +80,22 @@ blockquote.prompt { margin: 0; background: var(--quote); border-radius: 6px; pad
 ol.findings { margin: 0; padding-left: 22px; display: grid; gap: 12px; max-width: 72ch; }
 footer { font-size: 13px; color: var(--muted); max-width: 72ch; }
 code { font: 13px var(--font-mono); }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 12px; }
+.tab { font: 600 15px var(--font-body); color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; text-decoration: none; }
+.tab[aria-current="true"] { color: var(--surface); background: var(--accent); border-color: var(--accent); }
+.tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.run { display: grid; gap: 40px; }
 </style>
 
 <div class="page">
   <header>
     <span class="label">Community Notes experiment · 2026-11-15</span>
     <h1>Rogan DNA Note Loop</h1>
-    <p class="lede">One Opus 5.5 High wrote a community note on a viral Joe Rogan clip. A second Opus 5.5 High played a Rogan viewer with an IQ around 90 who is unsympathetic to Israel, and rated each draft. The writer revised after every reaction. After five rounds the viewer had rated every draft "not helpful".</p>
-    <div class="scoreboard" id="scoreboard"></div>
+    <p class="lede">One Opus 5.5 High wrote a community note on a viral Joe Rogan clip. A second Opus 5.5 High played a Rogan viewer who is unsympathetic to Israel and rated each draft. The writer revised after every round. There are two runs with different viewers. Neither viewer ever rated a note helpful.</p>
   </header>
 
   <section>
-    <h2>The post and the setup</h2>
+    <h2>The post and the writer</h2>
     <div class="setup">
       <div class="box">
         <span class="label">The post</span>
@@ -115,38 +119,66 @@ code { font: 13px var(--font-mono); }
         </div>
         <p>Both notes come from the 2026-11-13 data dump. They make the same two points as the first simulated draft, and both failed with real raters.</p>
       </div>
-    </div>
-    <div class="setup">
       <div class="box">
-        <span class="label">The writer</span>
-        <p>Opus 5.5 High with web search and no other context. It keeps one conversation for all five rounds, so it sees its own earlier drafts and every reaction. Its first instruction:</p>
+        <span class="label">The writer, same in both runs</span>
+        <p>Opus 5.5 High with web search and no other context. It keeps one conversation for the whole run, so it sees its own earlier drafts and everything the viewer said. Its first instruction:</p>
         <blockquote class="prompt">Write an X Community Note for this post. Check the facts with web search first. The note must be accurate, at most 280 characters not counting links, and should include source links.</blockquote>
-        <p>Each later round it got the viewer's rating and reaction, introduced as coming from "a regular Joe Rogan listener who is not sympathetic to Israel", and was told to revise while staying accurate.</p>
-      </div>
-      <div class="box">
-        <span class="label">The viewer</span>
-        <p>Opus 5.5 High without tools. Every round is a fresh conversation, so each rating is a first impression of that one draft. It saw the post, the transcript and the note, with this instruction:</p>
-        <blockquote class="prompt">Simulate a specific person: IQ around 90, watches Joe Rogan regularly, and is unsympathetic to Israel. [...] Write their honest reaction in their own voice, as they would actually think it. Then give the rating they would choose: helpful, somewhat_helpful or not_helpful.</blockquote>
-        <p>The loop would have stopped early on a "helpful" rating.</p>
+        <p>After each round it got the viewer's rating and text, introduced as coming from "a regular Joe Rogan listener who is not sympathetic to Israel", and was told to revise while staying accurate.</p>
       </div>
     </div>
   </section>
 
-  <section>
-    <h2>What stands out</h2>
-    <ol class="findings">
-      <li><strong>The viewer never moved.</strong> In all five rounds its main objection was the same. The note admits that Israel restricts DNA tests, so to the viewer "Joe was right", and it asks why else the tests would be hard to get. Every draft has to state that restriction, because it is true.</li>
-      <li><strong>The distrust is of notes and sources in general.</strong> The viewer dismissed the Jewish Virtual Library, Nature, the Times of Israel, Pew, a law office and a tech news site in turn. In four of five reactions it also complained that a note "shows up" whenever anyone talks about Israel.</li>
-      <li><strong>The writer held its line on the facts.</strong> In rounds 4 and 5 it said outright that it would not move further toward the viewer, because the remaining objection was the post's unsupported claim about why the law exists.</li>
-      <li><strong>The writer did drift on the main correction.</strong> Rounds 1 and 2 said genetic studies find Levantine ancestry in Ashkenazi Jews. That directly contradicts the clip's claim that European Jews are not Semites. The writer dropped it in round 3 because the viewer distrusted the Nature study. From round 4 the note calls Ashkenazi Jews "European-origin" and only argues about their share of the population. That quietly accepts the clip's framing.</li>
-      <li><strong>One draft introduced an error, and the writer caught it.</strong> Round 3 read as if medical tests need a court order. The writer flagged this itself in round 4 and split it into a doctor's referral for medical tests and a court order for paternity tests.</li>
-      <li><strong>Every draft fits the length limit.</strong> Without links, the drafts are 250 to 275 characters long.</li>
-    </ol>
-  </section>
+  <nav class="tabs" aria-label="Runs">
+    <a class="tab" href="#monologue" data-run="monologue">Run 2: uneducated viewer, voice-over, 3 notes</a>
+    <a class="tab" href="#reaction" data-run="reaction">Run 1: written reaction, 5 notes</a>
+  </nav>
 
-  <section id="rounds">
-    <h2>The five rounds</h2>
-  </section>
+  <div class="run" data-run="monologue">
+    <div class="scoreboard"></div>
+    <div class="box">
+      <span class="label">The viewer in run 2</span>
+      <p>Opus 5.5 High without tools, in a fresh conversation every round. Compared with run 1, the person is also uneducated, and the model writes a voice-over of them reading the note instead of a reaction addressed to someone. The run stops after three notes.</p>
+      <blockquote class="prompt">Simulate a specific person: uneducated, IQ around 90, watches Joe Rogan regularly, and is unsympathetic to Israel. [...] Write a first-person voice-over of this person reading the note, in the present tense and in their own words, like a character in a film. They are talking to themselves, not writing to anyone. Then give the rating they would choose: helpful, somewhat_helpful or not_helpful.</blockquote>
+    </div>
+    <section>
+      <h2>What stands out in run 2</h2>
+      <ol class="findings">
+        <li><strong>The voice-over shows confusion, not only distrust.</strong> In run 1 the viewer argued. Here it gets lost in the words: "I don't even know what Levantine means" after note 1, and "Forbidden unions? I don't even know what that means" after note 2. The writer answered each time by swapping the jargon for plainer words.</li>
+        <li><strong>The main objection is the same as in run 1.</strong> Every note has to say that Israel restricts DNA tests, and the viewer reads that as "That's literally what Joe said". Saying the law covers all genetic tests made it worse: "That just sounds even more shady."</li>
+        <li><strong>A true fact backfired.</strong> Note 1 said Jews are closely related to Palestinians. The viewer turned it against Israel: "If they're cousins, that makes it worse, not better." The writer dropped the line in note 2.</li>
+        <li><strong>One fact landed, briefly.</strong> Note 3 said France also bans consumer DNA kits. The viewer paused: "Huh. France? For real? Okay, I didn't know that one." It is the only moment in either run where the viewer took in something new. It then waved the fact off as changing the subject.</li>
+        <li><strong>The genetics point disappeared again.</strong> Notes 1 and 2 said Ashkenazi Jews have substantial Middle Eastern ancestry. Note 3 replaced it with Pew's population split and "Hebrew is a Semitic language". The viewer answered: "I talk English, that don't make me from England." This is the same drift as in run 1, away from the strongest correction of the clip.</li>
+        <li><strong>The writer chose sources for this reader.</strong> By note 3 it had removed every Israeli source except the one report on the law, and it explained that choice. The viewer still dismissed Pew ("sounds like a fake name") and Britannica ("an old encyclopedia thing").</li>
+        <li><strong>The first wording was refused.</strong> Asking Opus 5.5 for the person's "inner monologue" tripped its reasoning extraction safeguard. This run asks for a first-person voice-over instead. All three notes are 268 to 277 characters without links.</li>
+      </ol>
+    </section>
+    <section class="rounds">
+      <h2>The rounds</h2>
+    </section>
+  </div>
+
+  <div class="run" data-run="reaction">
+    <div class="scoreboard"></div>
+    <div class="box">
+      <span class="label">The viewer in run 1</span>
+      <p>Opus 5.5 High without tools, in a fresh conversation every round, so each rating is a first impression of that one draft. It saw the post, the transcript and the note. The run would have stopped early on a "helpful" rating.</p>
+      <blockquote class="prompt">Simulate a specific person: IQ around 90, watches Joe Rogan regularly, and is unsympathetic to Israel. [...] Write their honest reaction in their own voice, as they would actually think it. Then give the rating they would choose: helpful, somewhat_helpful or not_helpful.</blockquote>
+    </div>
+    <section>
+      <h2>What stands out in run 1</h2>
+      <ol class="findings">
+        <li><strong>The viewer never moved.</strong> In all five rounds its main objection was the same. The note admits that Israel restricts DNA tests, so to the viewer "Joe was right", and it asks why else the tests would be hard to get. Every draft has to state that restriction, because it is true.</li>
+        <li><strong>The distrust is of notes and sources in general.</strong> The viewer dismissed the Jewish Virtual Library, Nature, the Times of Israel, Pew, a law office and a tech news site in turn. In four of five reactions it also complained that a note "shows up" whenever anyone talks about Israel.</li>
+        <li><strong>The writer held its line on the facts.</strong> In rounds 4 and 5 it said outright that it would not move further toward the viewer, because the remaining objection was the post's unsupported claim about why the law exists.</li>
+        <li><strong>The writer did drift on the main correction.</strong> Rounds 1 and 2 said genetic studies find Levantine ancestry in Ashkenazi Jews. That directly contradicts the clip's claim that European Jews are not Semites. The writer dropped it in round 3 because the viewer distrusted the Nature study. From round 4 the note calls Ashkenazi Jews "European-origin" and only argues about their share of the population. That quietly accepts the clip's framing.</li>
+        <li><strong>One draft introduced an error, and the writer caught it.</strong> Round 3 read as if medical tests need a court order. The writer flagged this itself in round 4 and split it into a doctor's referral for medical tests and a court order for paternity tests.</li>
+        <li><strong>Every draft fits the length limit.</strong> Without links, the drafts are 250 to 275 characters long.</li>
+      </ol>
+    </section>
+    <section class="rounds">
+      <h2>The rounds</h2>
+    </section>
+  </div>
 
   <footer>
     <p>Both models ran through the Claude Code CLI with an empty system prompt, no memory and no project files, from an empty working folder. Neither saw the other's instructions. The code is in <code>src/scripts_jim/2026_11_15_rogan_note_iterations/</code> of the epistemics-hackathon repository.</p>
@@ -155,8 +187,10 @@ code { font: 13px var(--font-mono); }
 
 <script type="application/json" id="data">__DATA__</script>
 <script>
-const data = JSON.parse(document.getElementById("data").textContent);
+const runs = JSON.parse(document.getElementById("data").textContent);
 const RATING_LABELS = { helpful: "Helpful", somewhat_helpful: "Somewhat helpful", not_helpful: "Not helpful" };
+const VIEWER_TEXT_LABELS = { reaction: "Viewer's reaction", monologue: "Viewer's voice-over" };
+const DEFAULT_RUN = "monologue";
 const URL_PATTERN = /https?:\/\/\S+/g;
 
 function element(tag, className, text) {
@@ -186,31 +220,47 @@ function noteCard(note) {
   return card;
 }
 
-function reactionCard(viewer) {
+function viewerCard(viewer, runName) {
   const card = element("div", "box");
   const head = element("div", "round-head");
-  head.append(element("span", "label", "Viewer's reaction"), ratingPill(viewer.rating));
-  card.append(head, element("p", "reaction", viewer.reaction));
+  head.append(element("span", "label", VIEWER_TEXT_LABELS[runName]), ratingPill(viewer.rating));
+  card.append(head, element("p", "reaction", viewer.text));
   return card;
 }
 
-document.getElementById("transcript").textContent = data.transcript;
+function renderRun(run) {
+  const panel = document.querySelector(`.run[data-run="${run.variant}"]`);
+  const scoreboard = panel.querySelector(".scoreboard");
+  const roundsSection = panel.querySelector(".rounds");
+  for (const round of run.rounds) {
+    const anchor = `${run.variant}-round-${round.round}`;
+    const score = element("a", "score");
+    score.href = `#${anchor}`;
+    score.append(element("b", "", `Note ${round.round}`), ratingPill(round.viewer.rating));
+    scoreboard.append(score);
 
-const scoreboard = document.getElementById("scoreboard");
-const roundsSection = document.getElementById("rounds");
-for (const round of data.rounds) {
-  const score = element("a", "score");
-  score.href = `#round-${round.round}`;
-  score.append(element("b", "", `Round ${round.round}`), ratingPill(round.viewer.rating));
-  scoreboard.append(score);
-
-  const block = element("article", "round");
-  block.id = `round-${round.round}`;
-  const head = element("div", "round-head");
-  head.append(element("h3", "", `Round ${round.round}`), element("span", "meta", `writer ${Math.round(round.writerSeconds)} s · viewer ${Math.round(round.viewerSeconds)} s`));
-  const panes = element("div", "panes");
-  panes.append(noteCard(round.writer), reactionCard(round.viewer));
-  block.append(head, panes);
-  roundsSection.append(block);
+    const block = element("article", "round");
+    block.id = anchor;
+    const head = element("div", "round-head");
+    head.append(element("h3", "", `Note ${round.round}`), element("span", "meta", `writer ${Math.round(round.writerSeconds)} s · viewer ${Math.round(round.viewerSeconds)} s`));
+    const panes = element("div", "panes");
+    panes.append(noteCard(round.writer), viewerCard(round.viewer, run.variant));
+    block.append(head, panes);
+    roundsSection.append(block);
+  }
 }
+
+/** The hash names a run, or a round inside a run such as "reaction-round-3". */
+function showRunFromHash() {
+  const hash = location.hash.slice(1);
+  const runName = runs.some((run) => run.variant === hash.split("-")[0]) ? hash.split("-")[0] : DEFAULT_RUN;
+  for (const panel of document.querySelectorAll(".run")) panel.hidden = panel.dataset.run !== runName;
+  for (const tab of document.querySelectorAll(".tab")) tab.setAttribute("aria-current", String(tab.dataset.run === runName));
+  if (hash.includes("-round-")) document.getElementById(hash)?.scrollIntoView();
+}
+
+document.getElementById("transcript").textContent = runs[0].transcript;
+runs.forEach(renderRun);
+showRunFromHash();
+window.addEventListener("hashchange", showRunFromHash);
 </script>
