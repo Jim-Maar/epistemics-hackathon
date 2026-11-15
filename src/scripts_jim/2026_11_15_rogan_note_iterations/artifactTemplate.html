@@ -1,0 +1,216 @@
+<title>Rogan DNA Note Loop</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column; each round is a two-pane row (the note, then the viewer's reaction), stacked on phones. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #17202b;
+  --muted: #5b6676;
+  --line: #dde2e9;
+  --accent: #2f5d8a;
+  --bad: #b3372f;
+  --bad-soft: #fbe9e7;
+  --ok: #276b43;
+  --quote: #eef2f7;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161d; --surface: #19202a; --ink: #e6ebf1; --muted: #9aa6b6; --line: #2c3644;
+    --accent: #7fb0e0; --bad: #f08a80; --bad-soft: #3a2221; --ok: #7fd1a0; --quote: #202a36; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161d; --surface: #19202a; --ink: #e6ebf1; --muted: #9aa6b6; --line: #2c3644;
+  --accent: #7fb0e0; --bad: #f08a80; --bad-soft: #3a2221; --ok: #7fd1a0; --quote: #202a36; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font: 16px/1.6 var(--font-body); }
+.page {
+  max-width: 1080px; margin: 0 auto;
+  padding-block: 40px 80px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 48px;
+}
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 24px; font-weight: 700; }
+h3 { font-size: 17px; font-weight: 700; }
+p { margin: 0; }
+a { color: var(--accent); overflow-wrap: anywhere; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.label { font: 600 12px/1.4 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.prose { max-width: 68ch; display: grid; gap: 12px; }
+header { display: grid; gap: 16px; }
+.lede { font-size: 18px; color: var(--muted); max-width: 64ch; }
+
+.scoreboard { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; max-width: 640px; }
+.score { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 10px 12px; display: grid; gap: 4px; text-decoration: none; color: inherit; }
+.score b { font: 600 13px var(--font-mono); color: var(--muted); }
+.pill { display: inline-block; justify-self: start; font: 600 12px/1 var(--font-mono); padding: 5px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.not_helpful { background: var(--bad-soft); color: var(--bad); }
+.pill.somewhat_helpful { background: var(--quote); color: var(--muted); }
+.pill.helpful { background: var(--quote); color: var(--ok); }
+
+section { display: grid; gap: 20px; }
+.setup { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.post-text { font-size: 18px; }
+details summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.transcript { font-size: 14px; color: var(--muted); margin-top: 10px; white-space: pre-wrap; }
+.realnote { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 6px; font-size: 14px; }
+.realnote:first-of-type { border-top: 0; padding-top: 0; }
+blockquote.prompt { margin: 0; background: var(--quote); border-radius: 6px; padding: 12px 14px; font: 13px/1.55 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.round { display: grid; gap: 14px; scroll-margin-top: 16px; }
+.round-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
+.round-head .meta { font: 13px var(--font-mono); color: var(--muted); }
+.panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 760px) { .panes { grid-template-columns: minmax(0, 1fr); } }
+.note-card { border: 1px solid var(--accent); }
+.note-text { font-size: 16px; white-space: pre-wrap; }
+.links { display: grid; gap: 2px; font-size: 13px; }
+.changes { font-size: 14px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 10px; }
+.reaction { white-space: pre-wrap; font-size: 15px; }
+
+ol.findings { margin: 0; padding-left: 22px; display: grid; gap: 12px; max-width: 72ch; }
+footer { font-size: 13px; color: var(--muted); max-width: 72ch; }
+code { font: 13px var(--font-mono); }
+</style>
+
+<div class="page">
+  <header>
+    <span class="label">Community Notes experiment · 2026-11-15</span>
+    <h1>Rogan DNA Note Loop</h1>
+    <p class="lede">One Opus 5.5 High wrote a community note on a viral Joe Rogan clip. A second Opus 5.5 High played a Rogan viewer with an IQ around 90 who is unsympathetic to Israel, and rated each draft. The writer revised after every reaction. After five rounds the viewer had rated every draft "not helpful".</p>
+    <div class="scoreboard" id="scoreboard"></div>
+  </header>
+
+  <section>
+    <h2>The post and the setup</h2>
+    <div class="setup">
+      <div class="box">
+        <span class="label">The post</span>
+        <p class="post-text">"Joe Rogan on Israel restricting DNA ancestry testing because most of the people over there aren’t Semites 😳"</p>
+        <p><a href="https://x.com/RedPillSayian/status/2117744685636559226">https://x.com/RedPillSayian/status/2117744685636559226</a></p>
+        <p>The post carries a 103-second clip of Rogan talking with comedian Sam Tallent. It was transcribed with Whisper large v3.</p>
+        <details>
+          <summary>Read the transcript</summary>
+          <p class="transcript" id="transcript"></p>
+        </details>
+      </div>
+      <div class="box">
+        <span class="label">Real notes on this post, from the 2026-11-13 data dump</span>
+        <div class="realnote">
+          <p>"Israel's 2000 Genetic Information Law requires a doctor's referral for DNA tests. Reports cite privacy and fears that paternity results could upend marriages under religious law, not ancestry. Genome-wide studies trace most Jewish groups, including Ashkenazim, to the Levant."</p>
+          <span class="pill not_helpful">Currently rated not helpful</span>
+        </div>
+        <div class="realnote">
+          <p>"Israel’s Genetic Information Law (2000) restricts direct-to-consumer DNA kits and requires court orders for family testing to protect genetic privacy and address legal and religious issues, not to conceal ethnic origins."</p>
+          <span class="pill not_helpful">Currently rated not helpful</span>
+        </div>
+        <p>Both real notes make the same two points as the first simulated draft, and both failed with real raters.</p>
+      </div>
+    </div>
+    <div class="setup">
+      <div class="box">
+        <span class="label">The writer</span>
+        <p>Opus 5.5 High with web search and no other context. It keeps one conversation for all five rounds, so it sees its own earlier drafts and every reaction. Its first instruction:</p>
+        <blockquote class="prompt">Write an X Community Note for this post. Check the facts with web search first. The note must be accurate, at most 280 characters not counting links, and should include source links.</blockquote>
+        <p>Each later round it got the viewer's rating and reaction, introduced as coming from "a regular Joe Rogan listener who is not sympathetic to Israel", and was told to revise while staying accurate.</p>
+      </div>
+      <div class="box">
+        <span class="label">The viewer</span>
+        <p>Opus 5.5 High without tools. Every round is a fresh conversation, so each rating is a first impression of that one draft. It saw the post, the transcript and the note, with this instruction:</p>
+        <blockquote class="prompt">Simulate a specific person: IQ around 90, watches Joe Rogan regularly, and is unsympathetic to Israel. [...] Write their honest reaction in their own voice, as they would actually think it. Then give the rating they would choose: helpful, somewhat_helpful or not_helpful.</blockquote>
+        <p>The loop would have stopped early on a "helpful" rating.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What stands out</h2>
+    <ol class="findings">
+      <li><strong>The viewer never moved.</strong> In all five rounds its main objection was the same. The note admits that Israel restricts DNA tests, so to the viewer "Joe was right", and it asks why else the tests would be hard to get. Every draft has to state that restriction, because it is true.</li>
+      <li><strong>The distrust is of notes and sources in general.</strong> The viewer dismissed the Jewish Virtual Library, Nature, the Times of Israel, Pew, a law office and a tech news site in turn. In four of five reactions it also complained that a note "shows up" whenever anyone talks about Israel.</li>
+      <li><strong>The writer held its line on the facts.</strong> In rounds 4 and 5 it said outright that it would not move further toward the viewer, because the remaining objection was the post's unsupported claim about why the law exists.</li>
+      <li><strong>The writer did drift on the main correction.</strong> Rounds 1 and 2 said genetic studies find Levantine ancestry in Ashkenazi Jews. That directly contradicts the clip's claim that European Jews are not Semites. The writer dropped it in round 3 because the viewer distrusted the Nature study. From round 4 the note calls Ashkenazi Jews "European-origin" and only argues about their share of the population. That quietly accepts the clip's framing.</li>
+      <li><strong>One draft introduced an error, and the writer caught it.</strong> Round 3 read as if medical tests need a court order. The writer flagged this itself in round 4 and split it into a doctor's referral for medical tests and a court order for paternity tests.</li>
+      <li><strong>Every draft fits the length limit.</strong> Without links, the drafts are 250 to 275 characters long.</li>
+    </ol>
+  </section>
+
+  <section id="rounds">
+    <h2>The five rounds</h2>
+  </section>
+
+  <footer>
+    <p>Both models ran through the Claude Code CLI with an empty system prompt, no memory and no project files, from an empty working folder. Neither saw the other's instructions. The code is in <code>src/scripts_jim/2026_11_15_rogan_note_iterations/</code> of the epistemics-hackathon repository.</p>
+  </footer>
+</div>
+
+<script type="application/json" id="data">__DATA__</script>
+<script>
+const data = JSON.parse(document.getElementById("data").textContent);
+const RATING_LABELS = { helpful: "Helpful", somewhat_helpful: "Somewhat helpful", not_helpful: "Not helpful" };
+const URL_PATTERN = /https?:\/\/\S+/g;
+
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function ratingPill(rating) {
+  return element("span", `pill ${rating}`, RATING_LABELS[rating]);
+}
+
+function noteCard(note) {
+  const card = element("div", "box note-card");
+  const textWithoutLinks = note.note.replace(URL_PATTERN, "").trim();
+  card.append(element("span", "label", `Note · ${textWithoutLinks.length} characters without links`));
+  card.append(element("p", "note-text", textWithoutLinks));
+  const links = element("div", "links");
+  for (const url of note.note.match(URL_PATTERN) ?? []) {
+    const link = element("a", "", url);
+    link.href = url;
+    links.append(link);
+  }
+  card.append(links);
+  card.append(element("p", "changes", note.changes === "first draft" ? "First draft." : `What the writer changed: ${note.changes}`));
+  return card;
+}
+
+function reactionCard(viewer) {
+  const card = element("div", "box");
+  const head = element("div", "round-head");
+  head.append(element("span", "label", "Viewer's reaction"), ratingPill(viewer.rating));
+  card.append(head, element("p", "reaction", viewer.reaction));
+  return card;
+}
+
+document.getElementById("transcript").textContent = data.transcript;
+
+const scoreboard = document.getElementById("scoreboard");
+const roundsSection = document.getElementById("rounds");
+for (const round of data.rounds) {
+  const score = element("a", "score");
+  score.href = `#round-${round.round}`;
+  score.append(element("b", "", `Round ${round.round}`), ratingPill(round.viewer.rating));
+  scoreboard.append(score);
+
+  const block = element("article", "round");
+  block.id = `round-${round.round}`;
+  const head = element("div", "round-head");
+  head.append(element("h3", "", `Round ${round.round}`), element("span", "meta", `writer ${Math.round(round.writerSeconds)} s · viewer ${Math.round(round.viewerSeconds)} s`));
+  const panes = element("div", "panes");
+  panes.append(noteCard(round.writer), reactionCard(round.viewer));
+  block.append(head, panes);
+  roundsSection.append(block);
+}
+</script>

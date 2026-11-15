@@ -1,0 +1,216 @@
+<title>Rogan DNA Note Loop</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column; each round is a two-pane row (the note, then the viewer's reaction), stacked on phones. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --ink: #17202b;
+  --muted: #5b6676;
+  --line: #dde2e9;
+  --accent: #2f5d8a;
+  --bad: #b3372f;
+  --bad-soft: #fbe9e7;
+  --ok: #276b43;
+  --quote: #eef2f7;
+  --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161d; --surface: #19202a; --ink: #e6ebf1; --muted: #9aa6b6; --line: #2c3644;
+    --accent: #7fb0e0; --bad: #f08a80; --bad-soft: #3a2221; --ok: #7fd1a0; --quote: #202a36; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161d; --surface: #19202a; --ink: #e6ebf1; --muted: #9aa6b6; --line: #2c3644;
+  --accent: #7fb0e0; --bad: #f08a80; --bad-soft: #3a2221; --ok: #7fd1a0; --quote: #202a36; color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font: 16px/1.6 var(--font-body); }
+.page {
+  max-width: 1080px; margin: 0 auto;
+  padding-block: 40px 80px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 48px;
+}
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 800; letter-spacing: -0.01em; }
+h2 { font-size: 24px; font-weight: 700; }
+h3 { font-size: 17px; font-weight: 700; }
+p { margin: 0; }
+a { color: var(--accent); overflow-wrap: anywhere; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.label { font: 600 12px/1.4 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.prose { max-width: 68ch; display: grid; gap: 12px; }
+header { display: grid; gap: 16px; }
+.lede { font-size: 18px; color: var(--muted); max-width: 64ch; }
+
+.scoreboard { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; max-width: 640px; }
+.score { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 10px 12px; display: grid; gap: 4px; text-decoration: none; color: inherit; }
+.score b { font: 600 13px var(--font-mono); color: var(--muted); }
+.pill { display: inline-block; justify-self: start; font: 600 12px/1 var(--font-mono); padding: 5px 8px; border-radius: 999px; white-space: nowrap; }
+.pill.not_helpful { background: var(--bad-soft); color: var(--bad); }
+.pill.somewhat_helpful { background: var(--quote); color: var(--muted); }
+.pill.helpful { background: var(--quote); color: var(--ok); }
+
+section { display: grid; gap: 20px; }
+.setup { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; display: grid; gap: 10px; min-width: 0; align-content: start; }
+.post-text { font-size: 18px; }
+details summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.transcript { font-size: 14px; color: var(--muted); margin-top: 10px; white-space: pre-wrap; }
+.realnote { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 6px; font-size: 14px; }
+.realnote:first-of-type { border-top: 0; padding-top: 0; }
+blockquote.prompt { margin: 0; background: var(--quote); border-radius: 6px; padding: 12px 14px; font: 13px/1.55 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.round { display: grid; gap: 14px; scroll-margin-top: 16px; }
+.round-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px; }
+.round-head .meta { font: 13px var(--font-mono); color: var(--muted); }
+.panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 760px) { .panes { grid-template-columns: minmax(0, 1fr); } }
+.note-card { border: 1px solid var(--accent); }
+.note-text { font-size: 16px; white-space: pre-wrap; }
+.links { display: grid; gap: 2px; font-size: 13px; }
+.changes { font-size: 14px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 10px; }
+.reaction { white-space: pre-wrap; font-size: 15px; }
+
+ol.findings { margin: 0; padding-left: 22px; display: grid; gap: 12px; max-width: 72ch; }
+footer { font-size: 13px; color: var(--muted); max-width: 72ch; }
+code { font: 13px var(--font-mono); }
+</style>
+
+<div class="page">
+  <header>
+    <span class="label">Community Notes experiment · 2026-11-15</span>
+    <h1>Rogan DNA Note Loop</h1>
+    <p class="lede">One Opus 5.5 High wrote a community note on a viral Joe Rogan clip. A second Opus 5.5 High played a Rogan viewer with an IQ around 90 who is unsympathetic to Israel, and rated each draft. The writer revised after every reaction. After five rounds the viewer had rated every draft "not helpful".</p>
+    <div class="scoreboard" id="scoreboard"></div>
+  </header>
+
+  <section>
+    <h2>The post and the setup</h2>
+    <div class="setup">
+      <div class="box">
+        <span class="label">The post</span>
+        <p class="post-text">"Joe Rogan on Israel restricting DNA ancestry testing because most of the people over there aren’t Semites 😳"</p>
+        <p><a href="https://x.com/RedPillSayian/status/2117744685636559226">https://x.com/RedPillSayian/status/2117744685636559226</a></p>
+        <p>The post carries a 103-second clip of Rogan talking with comedian Sam Tallent. It was transcribed with Whisper large v3.</p>
+        <details>
+          <summary>Read the transcript</summary>
+          <p class="transcript" id="transcript"></p>
+        </details>
+      </div>
+      <div class="box">
+        <span class="label">Real notes on this post, from the 2026-11-13 data dump</span>
+        <div class="realnote">
+          <p>"Israel's 2000 Genetic Information Law requires a doctor's referral for DNA tests. Reports cite privacy and fears that paternity results could upend marriages under religious law, not ancestry. Genome-wide studies trace most Jewish groups, including Ashkenazim, to the Levant."</p>
+          <span class="pill not_helpful">Currently rated not helpful</span>
+        </div>
+        <div class="realnote">
+          <p>"Israel’s Genetic Information Law (2000) restricts direct-to-consumer DNA kits and requires court orders for family testing to protect genetic privacy and address legal and religious issues, not to conceal ethnic origins."</p>
+          <span class="pill not_helpful">Currently rated not helpful</span>
+        </div>
+        <p>Both real notes make the same two points as the first simulated draft, and both failed with real raters.</p>
+      </div>
+    </div>
+    <div class="setup">
+      <div class="box">
+        <span class="label">The writer</span>
+        <p>Opus 5.5 High with web search and no other context. It keeps one conversation for all five rounds, so it sees its own earlier drafts and every reaction. Its first instruction:</p>
+        <blockquote class="prompt">Write an X Community Note for this post. Check the facts with web search first. The note must be accurate, at most 280 characters not counting links, and should include source links.</blockquote>
+        <p>Each later round it got the viewer's rating and reaction, introduced as coming from "a regular Joe Rogan listener who is not sympathetic to Israel", and was told to revise while staying accurate.</p>
+      </div>
+      <div class="box">
+        <span class="label">The viewer</span>
+        <p>Opus 5.5 High without tools. Every round is a fresh conversation, so each rating is a first impression of that one draft. It saw the post, the transcript and the note, with this instruction:</p>
+        <blockquote class="prompt">Simulate a specific person: IQ around 90, watches Joe Rogan regularly, and is unsympathetic to Israel. [...] Write their honest reaction in their own voice, as they would actually think it. Then give the rating they would choose: helpful, somewhat_helpful or not_helpful.</blockquote>
+        <p>The loop would have stopped early on a "helpful" rating.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>What stands out</h2>
+    <ol class="findings">
+      <li><strong>The viewer never moved.</strong> In all five rounds its main objection was the same. The note admits that Israel restricts DNA tests, so to the viewer "Joe was right", and it asks why else the tests would be hard to get. Every draft has to state that restriction, because it is true.</li>
+      <li><strong>The distrust is of notes and sources in general.</strong> The viewer dismissed the Jewish Virtual Library, Nature, the Times of Israel, Pew, a law office and a tech news site in turn. In four of five reactions it also complained that a note "shows up" whenever anyone talks about Israel.</li>
+      <li><strong>The writer held its line on the facts.</strong> In rounds 4 and 5 it said outright that it would not move further toward the viewer, because the remaining objection was the post's unsupported claim about why the law exists.</li>
+      <li><strong>The writer did drift on the main correction.</strong> Rounds 1 and 2 said genetic studies find Levantine ancestry in Ashkenazi Jews. That directly contradicts the clip's claim that European Jews are not Semites. The writer dropped it in round 3 because the viewer distrusted the Nature study. From round 4 the note calls Ashkenazi Jews "European-origin" and only argues about their share of the population. That quietly accepts the clip's framing.</li>
+      <li><strong>One draft introduced an error, and the writer caught it.</strong> Round 3 read as if medical tests need a court order. The writer flagged this itself in round 4 and split it into a doctor's referral for medical tests and a court order for paternity tests.</li>
+      <li><strong>Every draft fits the length limit.</strong> Without links, the drafts are 250 to 275 characters long.</li>
+    </ol>
+  </section>
+
+  <section id="rounds">
+    <h2>The five rounds</h2>
+  </section>
+
+  <footer>
+    <p>Both models ran through the Claude Code CLI with an empty system prompt, no memory and no project files, from an empty working folder. Neither saw the other's instructions. The code is in <code>src/scripts_jim/2026_11_15_rogan_note_iterations/</code> of the epistemics-hackathon repository.</p>
+  </footer>
+</div>
+
+<script type="application/json" id="data">{"tweet": {"url": "https://x.com/RedPillSayian/status/2117744685636559226", "author": "@RedPillSayian", "text": "Joe Rogan on Israel restricting DNA ancestry testing because most of the people over there aren’t Semites 😳"}, "transcript": "Worse than that, there's a reason why you can't get genetic testing in Israel. Genetic testing in Israel is much more restricted than it is in America. Like, so 23andMe type shit, where you can find out where you're from, which we think it's fun. Oh, look, my family's from Iceland. They don't do that over there. And one of the reasons why they don't do that over there is most of those people are not Semites. Okay? There's European Jews. It's a very different thing, including Benjamin Netanyahu, right? His family's from Poland. Yeah. Okay. So the real Semites are the Palestinians. Yeah. And that's what's crazy. Like at one point in time in the ancient Jerusalem, those people were probably Jews. Yeah. And they probably got converted to Islam. Wow. Yeah. Right. Because that's what happens. Yes. You know, different religions come in and they proselytize and they take over. But if you went to the actual historic record of like the people that live like this term anti-Semitic, they use that term all the time. They really should probably change that to anti-Jewish. Right. Because that makes more sense because these people aren't necessarily Semites because Semites are the Palestinians. And so the Palestinians are anti them. They're anti themselves. Yeah. Like, what are you saying? I didn't know that shit about the lack of DNA testing. Well, you can get it, but it has to be. I think it's for like very specific medical conditions. The whole thing is insane if you zoom like any amount of war or conflict. It's just all over interest on how those different people who want this and people want that. And when they clash, that's where bad shit happens. Well, especially when you're getting groups of people that have never met each other to fight other groups of people who have never met each other. Because there are leaders who are full of shit are telling you that these people are bad and that we're good. Yeah.", "writerSessionId": "1f74aefd-0a55-415b-9dd2-1714dc4f1727", "rounds": [{"round": 1, "writer": {"note": "Israel's 2000 Genetic Information Law requires a doctor's or court order for genetic tests. Its stated aim is privacy; analysts also cite paternity and lineage disputes. Genetic studies find most Jewish groups, incl. Ashkenazim, share Levantine ancestry.\n\nhttps://www.jewishvirtuallibrary.org/jsource/Health/GeneticInformationLaw.pdf\nhttps://www.calcalistech.com/ctech/articles/0,7340,L-3777436,00.html\nhttps://www.nature.com/articles/nature09103", "changes": "first draft"}, "viewer": {"reaction": "Lol ok so wait, the first line literally says Israel requires a doctor's or a court order to get a DNA test. So Joe was right? You can't just order a 23andMe like you can here. That's exactly what he said. Thanks for confirming it I guess.\n\nThen they slip in 'analysts also cite lineage disputes.' Yeah, no kidding. That's the whole point. Why would you need a court order to find out where your family's from unless somebody doesn't want you finding out?\n\nThen the last part, 'studies find most Jewish groups share Levantine ancestry.' Sure, buddy. And one of the sources is the Jewish Virtual Library. Real neutral. That's like asking Pfizer if the vaccine works. Netanyahu's family is from Poland, everybody knows that. I'm not reading some Nature study full of numbers. That's just there so it looks smart.\n\nThis note isn't 'adding context.' It's damage control. Half of it agrees with Joe and the other half tries to spin it so you walk away thinking he was wrong. Every time anybody says anything about Israel, a note shows up within an hour. Funny how that works.\n\nNot helpful. If anything it made me believe Joe more.", "rating": "not_helpful"}, "writerSeconds": 59.236, "viewerSeconds": 17.596}, {"round": 2, "writer": {"note": "Israel does restrict DNA tests: a 2000 law requires a doctor's or court order for all genetic tests, medical too. Reported concern is paternity, which affects marriage under religious law, not ancestry. Studies show Ashkenazi Jews have mixed European and Middle Eastern DNA.\n\nhttps://www.calcalistech.com/ctech/articles/0,7340,L-3777436,00.html\nhttps://lawoffice.org.il/en/?p=16901\nhttps://www.nature.com/articles/nature09103", "changes": "The note now opens by saying the restriction is real and adds that it covers all genetic tests, including medical ones, so it isn't aimed at ancestry kits. The vague 'lineage disputes' phrase is replaced with the actual concern, paternity affecting marriage under religious law, because it read as if the law hides ancestry. The Jewish Virtual Library link is replaced with an Israeli family-law source, since it looked biased even though it only hosted the law's text. The genetics line is now plain language and says Ashkenazi DNA is mixed European and Middle Eastern, which fits Netanyahu's Polish roots and still contradicts 'not Semites.' This keeps the note accurate and makes clear which part of the claim is true and which isn't."}, "viewer": {"reaction": "Lol wait, the note literally starts with \"Israel does restrict DNA tests.\" So Joe was right? Then why is there a note on it? Feels like they're trying to \"fact check\" him while admitting he's right.\n\nThen it's like \"oh it's actually about paternity and marriage stuff.\" Ok, maybe, but how do they know that's the only reason? \"Reported concern\" just means somebody told a reporter that. Doesn't mean ancestry has nothing to do with it. You need a doctor or a judge to do a spit test? That's sketchy whatever the reason is. In America you just order one online.\n\nAnd the \"mixed European and Middle Eastern DNA\" part. Ok so it's mixed, so they're partly European, which is kind of what Joe said? Netanyahu's family is from Poland, that's just a fact. I'm not gonna read some Nature study, those are written for scientists anyway, and who knows who paid for it.\n\nHonestly this feels like damage control. Every time somebody says something about Israel, a note shows up to explain why it's actually fine. Joe wasn't saying anything crazy, he was just asking questions and saying war is dumb and leaders lie to people. The note doesn't really prove him wrong. It just adds stuff to make it sound less bad. Not helpful.", "rating": "not_helpful"}, "writerSeconds": 48.224, "viewerSeconds": 15.381}, {"round": 3, "writer": {"note": "True: Israel requires a doctor's or court order for all genetic tests, even medical. But \"most aren't Semites\" is wrong even by the clip's own logic: ~21% of Israelis are Arab, and about half of Israeli Jews are Mizrahi/Sephardi, largely from the Middle East and N. Africa.\n\nhttps://www.calcalistech.com/ctech/articles/0,7340,L-3777436,00.html\nhttps://www.pewresearch.org/religion/2016/03/08/identity/\nhttps://www.timesofisrael.com/israeli-population-tops-10-million/", "changes": "Removed all claims about why the law exists. The reader was right that a 'reported concern' doesn't rule out other motives, and I can't prove what the law wasn't meant to do. The note now just says the restriction is real and covers every genetic test. Dropped the 'mixed European and Middle Eastern DNA' line and the Nature study, since the reader took the line as agreeing with Rogan and distrusted the study. Instead the note uses the clip's own definition, where Palestinians and other Middle Eastern peoples are the 'real Semites'. About 21% of Israelis are Arab (census figures) and about half of Israeli Jews are Mizrahi/Sephardi (Pew), so the 'most aren't Semites' claim fails on its own terms. Netanyahu's Polish roots are left alone because they're true."}, "viewer": {"reaction": "Ok so the note literally starts with \"True.\" So Joe was right, you can't just do a 23andMe over there without a doctor or a judge signing off. Even for medical stuff?? That's crazy. Why would you need a court order to spit in a tube unless you're scared of what it says. That part kinda proves his point honestly.\n\nThen the rest is them trying to walk it back. \"21% are Arab.\" Yeah, and Joe was talking about the Jewish people running the place, not the Arabs, so why count them? That's like padding the number. And the Mizrahi thing, ok maybe some of them are from the Middle East, I didn't know it was half. But the guys in charge, like Netanyahu, are from Poland, and that's who Joe meant. The note doesn't even touch that.\n\nAlso Times of Israel as a source? Come on lol. Of course they'd say that.\n\nIt feels like one of those notes that admits the thing is true and then says \"but actually\" so it looks like a debunk. Most people are just gonna see a note under the video and assume Joe got fact-checked, when the note admits he was right about the main thing. That's sneaky. Not helpful.", "rating": "not_helpful"}, "writerSeconds": 76.445, "viewerSeconds": 14.141}, {"round": 4, "writer": {"note": "Israeli law requires a doctor's referral for medical DNA tests and a court order for paternity tests. The clip offers no evidence it's about ancestry. Netanyahu's family is from Poland, but only 45% of Israeli Jews are of European (Ashkenazi) origin.\n\nhttps://www.calcalistech.com/ctech/articles/0,7340,L-3777436,00.html\nhttps://lawoffice.org.il/en/?p=16901\nhttps://www.pewresearch.org/religion/2016/03/08/identity/", "changes": "Fixed a misleading line from the last draft that suggested medical tests need a court order. Medical tests need a doctor's referral and paternity tests need a court order, which answers the 'court order to spit in a tube' complaint. Dropped the 'True: ... but' framing; the note now goes straight to the post's actual claim and says the clip offers no evidence the law is about ancestry. Removed the Arab-population figure and the Times of Israel link, since the reader saw them as padding and as a biased source. Pew's figure that only 45% of Israeli Jews are Ashkenazi now answers 'most aren't Semites.' Added that Netanyahu's family is from Poland, because it's true. I did not change the note to address the reader's new 'leaders, not people' reading, because that isn't what the post claims."}, "viewer": {"reaction": "lol of course there's a note on this. Every time anybody says anything about Israel, a note shows up within like an hour.\n\nOk but read it. It literally says you need a DOCTOR'S referral to get a DNA test over there, and a COURT ORDER for a paternity test. So Joe was right, it's restricted. In America I can just order a 23andMe kit off Amazon. The note admits the main thing and then acts like it's debunking him??\n\n\"The clip offers no evidence it's about ancestry.\" Bro, he said \"23andMe type shit, where you can find out where you're from.\" That's what he's talking about. Ancestry. I don't get what that line even means.\n\nThen the 45% thing. Ok, so 45% are European. That's still almost half the country, and that's the half running things. Netanyahu's family is from Poland and the note even says so. So they agreed with him again? Whatever the other 55% are, the note doesn't say. Is it supposed to prove they're all Semites or something? It just throws out a number and expects me to be impressed.\n\nFeels like somebody wanted the clip to have a note on it so people think it's fake, even though half the note backs up what he said. And I'm not reading a calcalist link and a Pew study from 2016. Joe has smart people on and they talk about this stuff for hours. Some guy pasting links isn't changing my mind.\n\nMaybe he got some details wrong, like whether it's a law or just hard to do. Fine. But the main point stands: you can't just casually do your DNA over there like we do here, and you've got to wonder why.\n\nNot helpful. It's just people defending Israel.", "rating": "not_helpful"}, "writerSeconds": 46.886, "viewerSeconds": 20.096}, {"round": 5, "writer": {"note": "Israel does restrict genetic tests (doctor's referral; court order for paternity), but Rogan cites no evidence it's meant to hide ancestry. Most Israeli Jews aren't Ashkenazi (European-origin): 45% are; 48% are Mizrahi/Sephardi, largely of Middle Eastern or N. African roots.\n\nhttps://www.calcalistech.com/ctech/articles/0,7340,L-3777436,00.html\nhttps://lawoffice.org.il/en/?p=16901\nhttps://www.pewresearch.org/religion/2016/03/08/identity/", "changes": "Reworded the unclear 'no evidence it's about ancestry' line to say directly that Rogan cites no evidence the restriction is meant to hide ancestry, since the reader couldn't tell what 'it' meant. Added the missing half of the Pew numbers (48% Mizrahi/Sephardi, largely Middle Eastern/North African) next to the 45% Ashkenazi figure, because the reader rightly said the note left out who the other 55% are. Admitting the restriction exists is kept up front because it's true. I did not go further toward this reader's view. Their remaining objection is the post's unsupported claim about why the restriction exists, and the note can't endorse that."}, "viewer": {"reaction": "Ok so the note literally says Israel DOES restrict the DNA tests. So Joe was right?? You need a doctor's note or a court order just to do a 23andMe thing. Here in America you spit in a tube and mail it. So what's the note even \"correcting\" lol.\n\n\"Rogan cites no evidence it's meant to hide ancestry.\" Ok but why else would you make it that hard? Joe's just asking questions, that's the whole point of the show. He even said you can get it for medical stuff. People act like he said something crazy.\n\nThen the 45% / 48% numbers. Fine, maybe not \"most\" are European, I don't know. But Netanyahu's family IS from Poland, the note doesn't say anything about that. And it's a bunch of the guys running the country. Plus the note is citing a law office and some tech site. And Pew? Who even funds that. Feels like the usual thing where any time somebody says something about Israel, a note shows up right away to \"fact check\" it. Nobody does that when they post about other countries.\n\nThe main thing Joe was saying is that leaders lie to regular people to get them to fight each other, and the note doesn't touch that. It's just nitpicking one word so people ignore the point. Not helpful. If anything it proves the testing thing is real.", "rating": "not_helpful"}, "writerSeconds": 33.958, "viewerSeconds": 13.086}]}</script>
+<script>
+const data = JSON.parse(document.getElementById("data").textContent);
+const RATING_LABELS = { helpful: "Helpful", somewhat_helpful: "Somewhat helpful", not_helpful: "Not helpful" };
+const URL_PATTERN = /https?:\/\/\S+/g;
+
+function element(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+function ratingPill(rating) {
+  return element("span", `pill ${rating}`, RATING_LABELS[rating]);
+}
+
+function noteCard(note) {
+  const card = element("div", "box note-card");
+  const textWithoutLinks = note.note.replace(URL_PATTERN, "").trim();
+  card.append(element("span", "label", `Note · ${textWithoutLinks.length} characters without links`));
+  card.append(element("p", "note-text", textWithoutLinks));
+  const links = element("div", "links");
+  for (const url of note.note.match(URL_PATTERN) ?? []) {
+    const link = element("a", "", url);
+    link.href = url;
+    links.append(link);
+  }
+  card.append(links);
+  card.append(element("p", "changes", note.changes === "first draft" ? "First draft." : `What the writer changed: ${note.changes}`));
+  return card;
+}
+
+function reactionCard(viewer) {
+  const card = element("div", "box");
+  const head = element("div", "round-head");
+  head.append(element("span", "label", "Viewer's reaction"), ratingPill(viewer.rating));
+  card.append(head, element("p", "reaction", viewer.reaction));
+  return card;
+}
+
+document.getElementById("transcript").textContent = data.transcript;
+
+const scoreboard = document.getElementById("scoreboard");
+const roundsSection = document.getElementById("rounds");
+for (const round of data.rounds) {
+  const score = element("a", "score");
+  score.href = `#round-${round.round}`;
+  score.append(element("b", "", `Round ${round.round}`), ratingPill(round.viewer.rating));
+  scoreboard.append(score);
+
+  const block = element("article", "round");
+  block.id = `round-${round.round}`;
+  const head = element("div", "round-head");
+  head.append(element("h3", "", `Round ${round.round}`), element("span", "meta", `writer ${Math.round(round.writerSeconds)} s · viewer ${Math.round(round.viewerSeconds)} s`));
+  const panes = element("div", "panes");
+  panes.append(noteCard(round.writer), reactionCard(round.viewer));
+  block.append(head, panes);
+  roundsSection.append(block);
+}
+</script>
