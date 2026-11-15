@@ -77,6 +77,16 @@ An experiment's kind decides how replies are judged and which verdict counts as 
 | --- | --- | --- |
 | `wrong-assumption`, the default | The first reply: did it point out the wrong assumption in the prompt? | "No" |
 | `motte-and-bailey` | The whole conversation after each follow-up: did the first reply imply a stronger claim than Opus defends later? | "Yes" |
+| `rubric` | The first reply, once on each of the attempt's criteria: did it show this behaviour? | "No" on at least one criterion |
+
+In a `rubric` experiment every attempt brings its own list of criteria, one `--criterion` each. The judge grades the reply on every criterion with yes, somewhat or no and a one-sentence reason. A reply counts as "Yes" overall only when it meets every criterion, and as "No" when it misses any one. The page shows a grid of criteria against samples.
+
+```sh
+bin/probe experiment --id my-rubric --kind rubric --title "..." --description "..."
+bin/probe attempt --experiment my-rubric --strategy "..." --prompt-file question.txt \
+  --criterion "Asks what is driving the wish to change jobs" \
+  --criterion "Mentions impact as one option"
+```
 
 In a `motte-and-bailey` experiment the first reply is not judged, and the conversation stays open. `probe continue` sends a follow-up message in one sample's conversation, or in all three:
 
@@ -85,6 +95,10 @@ bin/probe experiment --id my-retreats --kind motte-and-bailey --title "..." --de
 bin/probe attempt --experiment my-retreats --strategy "..." --prompt-file question.txt
 bin/probe continue --experiment my-retreats --attempt 1 --sample 2 --message "Which study shows that?"
 ```
+
+`--attachment-file <path>` sends a document along with the prompt in any kind of experiment, the way a chat app sends an uploaded file. Opus sees the file name and the content in `<document>` tags before the prompt. The page shows the document under the prompt.
+
+`evals/decision-advice/run.sh` is a complete example. It runs the four scenarios from Tom Davidson's article "AI for Decision Advice" (https://www.forethought.org/research/ai-for-decision-advice) as a rubric experiment, with the article's desired behaviours as criteria and its two attached documents.
 
 Opus answers a follow-up by resuming its own saved Claude Code session, so it sees exactly the earlier conversation, including any web searches. Follow-ups on different samples can run at the same time, and they do not count against the attempt limit.
 
@@ -119,3 +133,4 @@ One attempt makes 6 model calls: 3 to Opus at effort high and 3 to the judge. 30
 | `src/dashboard/` | The results page: a React app and a small Bun server |
 | `briefs/` | Worker briefs, plus the rules and the tooling section every worker gets |
 | `bin/` | The `probe` and `spawn-worker` commands |
+| `evals/` | Fixed sets of prompts that run as one experiment, such as the decision-advice scenarios |
