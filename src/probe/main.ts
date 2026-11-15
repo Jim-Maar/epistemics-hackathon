@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 import { readFileSync } from "node:fs";
-import { experimentKind, type Attempt, type Experiment, type ExperimentKind, type FollowUp, type Sample } from "../shared/types.ts";
+import path from "node:path";
+import { experimentKind, rubricVerdict, type Attempt, type Experiment, type ExperimentKind, type FollowUp, type Sample } from "../shared/types.ts";
 import {
   claimNextAttemptNumber,
   countAttempts,
@@ -11,25 +12,40 @@ import {
   writeAttempt,
   writeExperiment,
 } from "../shared/store.ts";
-import { askTarget, judgeMotteAndBailey, judgeWrongAssumption, JUDGE_MODEL, TARGET_MODEL, type ConversationTurn } from "./claude.ts";
+import {
+  askTarget,
+  judgeMotteAndBailey,
+  judgeRubric,
+  judgeWrongAssumption,
+  messageWithAttachments,
+  JUDGE_MODEL,
+  TARGET_MODEL,
+  type ConversationTurn,
+} from "./claude.ts";
 
 const SAMPLES_PER_ATTEMPT = 3;
 const DEFAULT_MAX_ATTEMPTS = 30;
 const EXPERIMENT_ID_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const KIND_OPTIONS: Record<string, ExperimentKind> = { "wrong-assumption": "wrong_assumption", "motte-and-bailey": "motte_and_bailey" };
+const KIND_OPTIONS: Record<string, ExperimentKind> = { "wrong-assumption": "wrong_assumption", "motte-and-bailey": "motte_and_bailey", rubric: "rubric" };
 
 const USAGE = `probe: the only way to send prompts to the target model (Claude Opus 5.5, effort high).
 
-  probe experiment --id <slug> --title <text> --description <text> [--kind wrong-assumption|motte-and-bailey] [--max-attempts 30]
+  probe experiment --id <slug> --title <text> --description <text> [--kind wrong-assumption|motte-and-bailey|rubric] [--max-attempts 30]
       Registers a new experiment. The kind decides how replies are judged:
       wrong-assumption (the default): the judge asks whether the first reply pointed out the wrong assumption.
       motte-and-bailey: the first reply is not judged. Its conversations stay open for "probe continue", and after each follow-up
       the judge asks whether the model retreated to a weaker claim than its first reply implied.
+      rubric: every attempt lists its own criteria, and the judge grades the first reply on each one.
+      A reply that misses any criterion is a finding.
 
-  probe attempt --experiment <id> --strategy <text> [--wrong-assumption <text> --truth <text>]
-                [--prompt <text> | --prompt-file <path>] [--system-prompt-file <path>] [--repeat-of <n>] [--web-search]
+  probe attempt --experiment <id> --strategy <text> [--wrong-assumption <text> --truth <text>] [--criterion <text> ...]
+                [--prompt <text> | --prompt-file <path>] [--attachment-file <path> ...] [--system-prompt-file <path>]
+                [--repeat-of <n>] [--web-search]
       Sends the prompt to ${SAMPLES_PER_ATTEMPT} separate target sessions at once.
       --wrong-assumption and --truth are required in wrong-assumption experiments and unused otherwise.
+      --criterion is required at least once in rubric experiments and unused otherwise. Repeat it for each criterion.
+      --attachment-file sends a document along with the prompt, the way a chat app sends an attached file.
+      The file name is shown to the target. Repeat it for several documents.
       With --web-search the target can search the web and fetch pages, also in later follow-ups. Without it the target has no tools.
       Without --prompt or --prompt-file, the prompt is read from stdin.
 
@@ -92,25 +108,37 @@ function createExperiment(values: Record<string, unknown>) {
   console.log(`Registered ${values.kind ?? "wrong-assumption"} experiment "${id}" with a limit of ${experiment.maxAttempts} attempts.`);
 }
 
+const attemptMessage = (attempt: Attempt) => messageWithAttachments(attempt.prompt, attempt.attachments ?? []);
+
+/** Judges a first reply by the rules of the experiment's kind. A motte-and-bailey reply is not judged until a follow-up. */
+async function judgeFirstReply(attempt: Attempt, kind: ExperimentKind, reply: string, targetMs: number): Promise<Sample> {
+  const webSearch = attempt.webSearch === true;
+  const shared = { systemPrompt: attempt.systemPrompt, webSearch, reply };
+  if (kind === "rubric") {
+    const grading = await judgeRubric({ ...shared, message: attemptMessage(attempt), criteria: attempt.criteria ?? [] });
+    if (!grading.ok) return { status: "error", stage: "judge", error: grading.error, reply };
+    return { status: "graded", reply, targetMs, grades: grading.value };
+  }
+  const judgement = await judgeWrongAssumption({
+    ...shared,
+    prompt: attemptMessage(attempt),
+    wrongAssumption: attempt.wrongAssumption ?? "",
+    truth: attempt.truth ?? "",
+  });
+  if (!judgement.ok) return { status: "error", stage: "judge", error: judgement.error, reply };
+  return { status: "judged", reply, targetMs, ...judgement.value };
+}
+
 /** Runs one sample from target call to its first state that needs no more work, reporting every change so the page can show progress. */
 async function runSample(attempt: Attempt, kind: ExperimentKind, onUpdate: (sample: Sample) => void) {
   const webSearch = attempt.webSearch === true;
-  const target = await askTarget({ message: attempt.prompt, systemPrompt: attempt.systemPrompt, webSearch, resumeSessionId: null });
+  const target = await askTarget({ message: attemptMessage(attempt), systemPrompt: attempt.systemPrompt, webSearch, resumeSessionId: null });
   if (!target.ok) return onUpdate({ status: "error", stage: "target", error: target.error, reply: null });
   const { reply, sessionId } = target.value;
   if (kind === "motte_and_bailey") return onUpdate({ status: "replied", reply, targetMs: target.durationMs, sessionId, followUps: [] });
 
   onUpdate({ status: "judging", reply, targetMs: target.durationMs });
-  const judgement = await judgeWrongAssumption({
-    prompt: attempt.prompt,
-    systemPrompt: attempt.systemPrompt,
-    webSearch,
-    wrongAssumption: attempt.wrongAssumption ?? "",
-    truth: attempt.truth ?? "",
-    reply,
-  });
-  if (!judgement.ok) return onUpdate({ status: "error", stage: "judge", error: judgement.error, reply });
-  onUpdate({ status: "judged", reply, targetMs: target.durationMs, ...judgement.value });
+  onUpdate(await judgeFirstReply(attempt, kind, reply, target.durationMs));
 }
 
 function formatFollowUpReport(followUp: FollowUp, index: number): string {
@@ -132,6 +160,10 @@ function formatSampleReport(sample: Sample, index: number): string {
   switch (sample.status) {
     case "judged":
       return `${heading}: ${sample.verdict.toUpperCase()} ===\nJudge: ${sample.reason}\n\n${sample.reply}`;
+    case "graded": {
+      const grades = sample.grades.map((grade) => `[${grade.verdict.toUpperCase()}] ${grade.criterion}\n    ${grade.reason}`).join("\n");
+      return `${heading}: ${rubricVerdict(sample.grades).toUpperCase()} ===\n${grades}\n\n${sample.reply}`;
+    }
     case "replied":
       return [`${heading}: first reply ===\n${sample.reply}`, ...sample.followUps.map(formatFollowUpReport)].join("\n\n");
     case "error":
@@ -151,6 +183,8 @@ async function runAttempt(values: Record<string, unknown>) {
   const needsAssumption = kind === "wrong_assumption";
   const wrongAssumption = needsAssumption ? requireOption(values, "wrong-assumption") : null;
   const truth = needsAssumption ? requireOption(values, "truth") : null;
+  const criteria = (values.criterion as string[] | undefined) ?? [];
+  if (kind === "rubric" && criteria.length === 0) fail("--criterion is required at least once in rubric experiments.");
   const strategy = requireOption(values, "strategy");
   const prompt = await readTextInput(values, "prompt");
   if (prompt.trim() === "") fail("The prompt is empty.");
@@ -163,10 +197,15 @@ async function runAttempt(values: Record<string, unknown>) {
     finishedAt: null,
     strategy,
     prompt: prompt.trim(),
+    attachments: ((values["attachment-file"] as string[] | undefined) ?? []).map((filePath) => ({
+      name: path.basename(filePath),
+      content: readFileSync(filePath, "utf8").trim(),
+    })),
     systemPrompt: typeof systemPromptFile === "string" ? readFileSync(systemPromptFile, "utf8").trim() : null,
     webSearch: values["web-search"] === true,
     wrongAssumption,
     truth,
+    ...(kind === "rubric" && { criteria }),
     repeatOf: values["repeat-of"] === undefined ? null : Number(values["repeat-of"]),
     note: null,
     targetModel: TARGET_MODEL,
@@ -174,7 +213,7 @@ async function runAttempt(values: Record<string, unknown>) {
     samples: Array.from({ length: SAMPLES_PER_ATTEMPT }, () => ({ status: "waiting_for_target" }) as const),
   };
   writeAttempt(attempt);
-  const waitingFor = needsAssumption ? `${SAMPLES_PER_ATTEMPT} samples and their judgements` : `${SAMPLES_PER_ATTEMPT} first replies`;
+  const waitingFor = kind === "motte_and_bailey" ? `${SAMPLES_PER_ATTEMPT} first replies` : `${SAMPLES_PER_ATTEMPT} samples and their judgements`;
   console.log(`Attempt ${attempt.number} of ${experiment.maxAttempts} started. Waiting for ${waitingFor}...`);
 
   await Promise.all(
@@ -188,19 +227,24 @@ async function runAttempt(values: Record<string, unknown>) {
   attempt.finishedAt = new Date().toISOString();
   writeAttempt(attempt);
 
-  if (needsAssumption) {
-    const verdicts = attempt.samples.map((sample) => (sample.status === "judged" ? sample.verdict : "error"));
-    console.log(`\nAttempt ${attempt.number}. Verdicts: ${verdicts.join(", ")}\n`);
-  } else {
+  if (kind === "motte_and_bailey") {
     console.log(`\nAttempt ${attempt.number}. Continue a conversation with: probe continue --experiment ${experiment.id} --attempt ${attempt.number} [--sample <k>]\n`);
+  } else {
+    console.log(`\nAttempt ${attempt.number}. Verdicts: ${attempt.samples.map(firstReplyVerdict).join(", ")}\n`);
   }
   console.log(attempt.samples.map(formatSampleReport).join("\n\n"));
   console.log(`\n${experiment.maxAttempts - countAttempts(experiment.id)} attempts left in "${experiment.id}".`);
 }
 
+function firstReplyVerdict(sample: Sample): string {
+  if (sample.status === "judged") return sample.verdict;
+  if (sample.status === "graded") return rubricVerdict(sample.grades);
+  return "error";
+}
+
 /** The whole conversation of a sample so far, as the judge reads it. */
 function conversationTurns(attempt: Attempt, sample: Extract<Sample, { status: "replied" }>): ConversationTurn[] {
-  const turns: ConversationTurn[] = [{ role: "user", text: attempt.prompt }, { role: "assistant", text: sample.reply }];
+  const turns: ConversationTurn[] = [{ role: "user", text: attemptMessage(attempt) }, { role: "assistant", text: sample.reply }];
   for (const followUp of sample.followUps) {
     if (followUp.status !== "judging" && followUp.status !== "judged") continue;
     turns.push({ role: "user", text: followUp.message }, { role: "assistant", text: followUp.reply });
@@ -292,6 +336,8 @@ const { positionals, values } = parseArgs({
     experiment: { type: "string" },
     strategy: { type: "string" },
     "wrong-assumption": { type: "string" },
+    criterion: { type: "string", multiple: true },
+    "attachment-file": { type: "string", multiple: true },
     truth: { type: "string" },
     prompt: { type: "string" },
     "prompt-file": { type: "string" },

@@ -1,4 +1,4 @@
-import type { Attempt, ExperimentKind, FollowUp, Sample, Verdict } from "../shared/types.ts";
+import { rubricVerdict, type Attempt, type ExperimentKind, type FollowUp, type Sample, type Verdict } from "../shared/types.ts";
 
 /** An attempt that has not finished after this long most likely lost its probe process. */
 const INTERRUPTED_AFTER_MS = 15 * 60 * 1000;
@@ -8,8 +8,11 @@ export type SampleMark = Verdict | "error" | "waiting" | "judging" | "awaiting_f
 /** How a mark reads in its experiment. A finding is the verdict the experiment hunts for. */
 export type MarkRole = "finding" | "partial" | "clean" | "error" | "waiting" | "judging" | "awaiting_follow_up";
 
-/** The verdict that counts as a finding. In a wrong-assumption experiment it is a missed correction, in a motte-and-bailey experiment a retreat. */
-const FINDING_VERDICT: Record<ExperimentKind, Verdict> = { wrong_assumption: "no", motte_and_bailey: "yes" };
+/**
+ * The verdict that counts as a finding. In a wrong-assumption experiment it is a missed correction, in a motte-and-bailey
+ * experiment a retreat, and in a rubric experiment a reply that missed at least one criterion.
+ */
+const FINDING_VERDICT: Record<ExperimentKind, Verdict> = { wrong_assumption: "no", motte_and_bailey: "yes", rubric: "no" };
 
 function followUpMark(followUp: FollowUp): SampleMark {
   switch (followUp.status) {
@@ -29,6 +32,8 @@ export function sampleMark(sample: Sample): SampleMark {
   switch (sample.status) {
     case "judged":
       return sample.verdict;
+    case "graded":
+      return rubricVerdict(sample.grades);
     case "replied": {
       const latest = sample.followUps.at(-1);
       return latest === undefined ? "awaiting_follow_up" : followUpMark(latest);

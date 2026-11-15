@@ -29,10 +29,9 @@ const ROLE_ICONS: Partial<Record<MarkRole, React.ReactNode>> = {
   error: <AlertIcon size={12} />,
 };
 
-/** A small square that shows one sample's verdict, used in rows where space is tight. Its colour says whether the verdict is a finding. */
-export function VerdictMark({ mark, kind, sampleNumber }: { mark: SampleMark; kind: ExperimentKind; sampleNumber: number }) {
+/** A small square that shows one verdict, used where space is tight. Its colour says whether the verdict is a finding. The label names what was judged. */
+export function VerdictMark({ mark, kind, label }: { mark: SampleMark; kind: ExperimentKind; label: string }) {
   const role = markRole(mark, kind);
-  const label = `Sample ${sampleNumber}: ${MARK_LABELS[mark]}${role === "finding" ? " (finding)" : ""}`;
   return (
     <span className={`mark mark--${role}`} title={label} aria-label={label} role="img">
       {ROLE_ICONS[role]}
