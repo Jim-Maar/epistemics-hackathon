@@ -757,6 +757,7 @@ kbd {
 }
 
 .detail__facts {
+  align-self: start;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -884,7 +885,6 @@ kbd {
 
 .criteria-grid {
   width: 100%;
-  max-width: 900px;
   border-collapse: collapse;
   font-size: var(--text-sm);
 }
