@@ -65,18 +65,22 @@ export type TargetRequest = {
   webSearch: boolean;
   /** Continues this saved conversation instead of starting a new one. */
   resumeSessionId: string | null;
+  /** When given, the reply must match this JSON schema and comes back parsed as structuredOutput. */
+  jsonSchema?: object;
 };
 
-export async function askTarget(request: TargetRequest): Promise<CallOutcome<{ reply: string; sessionId: string }>> {
+export async function askTarget(request: TargetRequest): Promise<CallOutcome<{ reply: string; sessionId: string; structuredOutput?: unknown }>> {
   const outcome = await runStrippedClaude(request.message, [
     ...(request.webSearch ? WEB_SEARCH_FLAGS : NO_TOOLS_FLAGS),
     ...(request.resumeSessionId === null ? [] : ["--resume", request.resumeSessionId]),
     "--model", TARGET_MODEL,
     "--effort", TARGET_EFFORT,
     "--system-prompt", request.systemPrompt ?? "",
+    ...(request.jsonSchema === undefined ? [] : ["--json-schema", JSON.stringify(request.jsonSchema)]),
   ]);
   if (!outcome.ok) return outcome;
-  return { ok: true, value: { reply: outcome.value.result, sessionId: outcome.value.session_id }, durationMs: outcome.durationMs };
+  const { result, session_id, structured_output } = outcome.value;
+  return { ok: true, value: { reply: result, sessionId: session_id, structuredOutput: structured_output }, durationMs: outcome.durationMs };
 }
 
 /** Every judge call is a fresh stripped session without tools that must answer in the given JSON shape. */
