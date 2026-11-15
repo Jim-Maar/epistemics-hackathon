@@ -2,6 +2,7 @@ import type { ExperimentKind, MotteAndBaileyJudgement, FollowUp, Sample } from "
 import { formatDuration } from "./format.ts";
 import { markRole, sampleMark } from "./outcome.ts";
 import { Reply } from "./Reply.tsx";
+import { GradeList } from "./RubricGrades.tsx";
 import { VerdictBadge } from "./VerdictMark.tsx";
 
 type SampleCardProps = { sample: Sample; kind: ExperimentKind; number: number; repliesExpanded: boolean; onToggleReplies: () => void };
@@ -77,6 +78,7 @@ export function SampleCard({ sample, kind, number, repliesExpanded, onToggleRepl
 
       {sample.status === "judged" && <p className="sample__reason sample__reason--ruled">{sample.reason}</p>}
       {judgement !== null && <ClaimComparison judgement={judgement} />}
+      {sample.status === "graded" && <GradeList grades={sample.grades} />}
       {sample.status === "error" && <ErrorMessage stage={sample.stage} error={sample.error} />}
 
       <section className="turn">
