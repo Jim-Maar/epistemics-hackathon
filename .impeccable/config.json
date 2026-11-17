@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "all-caps-body",
+        "value": "*",
+        "files": [
+          "src/scripts_jim/2026_11_15_rogan_note_iterations/artifactTemplate.html"
+        ],
+        "createdAt": "2026-11-15T06:40:53.414Z",
+        "reason": "Claude triage: uppercase is used only for short .label captions of two to six words, not for body passages"
+      },
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          "src/scripts_jim/2026_11_15_rogan_note_iterations/artifactTemplate.html"
+        ],
+        "createdAt": "2026-11-15T13:05:20.812Z",
+        "reason": "Claude triage: the detector pairs dark-theme tokens with light-theme backgrounds; every real token pair in each theme measured 4.8:1 or higher"
+      }
+    ]
+  }
+}
